@@ -15,6 +15,7 @@ We use bazel as the build tool. Please refer to [the bazel documentation](https:
 Run the following commands to build the MLLP adapter binary:
 
 ```bash
+cd mllp_adapter
 bazel build :mllp_adapter
 ```
 
