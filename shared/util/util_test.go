@@ -21,18 +21,18 @@ import (
 
 const validParentPath string = "projects/p1/location/l1/datasets/ds1"
 
-func TestGenerateHL7StoreName(t *testing.T) {
-	expected := "projects/p1/locations/l1/datasets/ds1/hl7Stores/hl71"
-	if name := GenerateHL7StoreName("p1", "l1", "ds1", "hl71"); name != expected {
-		t.Errorf("GenerateHL7StoreName(\"p1\", \"l1\", \"ds1\", \"hl71\") => %v, expected %v", name, expected)
+func TestGenerateHL7V2StoreName(t *testing.T) {
+	expected := "projects/p1/locations/l1/datasets/ds1/hl7V2Stores/hl71"
+	if name := GenerateHL7V2StoreName("p1", "l1", "ds1", "hl71"); name != expected {
+		t.Errorf("GenerateHL7V2StoreName(\"p1\", \"l1\", \"ds1\", \"hl71\") => %v, expected %v", name, expected)
 	}
 }
 
-func TestParseHL7MessageName_Success(t *testing.T) {
-	msgName := GenerateHL7MessageName("p1", "l1", "ds1", "hl71", "msg1")
-	pRef, lID, dID, hl7StoreID, msgID, err := ParseHL7MessageName(msgName)
-	if pRef != "p1" || lID != "l1" || dID != "ds1" || hl7StoreID != "hl71" || msgID != "msg1" || err != nil {
-		t.Errorf("ParseHL7MessageName(%v) => (%v, %v, %v, %v, %v, %v) expected (p1, l1, ds1, hl71, msg1, nil)", msgName, pRef, lID, dID, hl7StoreID, msgID, err)
+func TestParseHL7V2MessageName_Success(t *testing.T) {
+	msgName := GenerateHL7V2MessageName("p1", "l1", "ds1", "hl71", "msg1")
+	pRef, lID, dID, hl7V2StoreID, msgID, err := ParseHL7V2MessageName(msgName)
+	if pRef != "p1" || lID != "l1" || dID != "ds1" || hl7V2StoreID != "hl71" || msgID != "msg1" || err != nil {
+		t.Errorf("ParseHL7V2MessageName(%v) => (%v, %v, %v, %v, %v, %v) expected (p1, l1, ds1, hl71, msg1, nil)", msgName, pRef, lID, dID, hl7V2StoreID, msgID, err)
 	}
 }
 
@@ -43,7 +43,7 @@ func TestGenerateFHIRStoreName(t *testing.T) {
 	}
 }
 
-func TestParseHL7MessageName_Errors(t *testing.T) {
+func TestParseHL7V2MessageName_Errors(t *testing.T) {
 	tests := []struct {
 		name, msgName string
 	}{
@@ -52,22 +52,22 @@ func TestParseHL7MessageName_Errors(t *testing.T) {
 			"blahblah",
 		},
 		{
-			"invalid HL7 stores component",
+			"invalid HL7v2 stores component",
 			validParentPath + strings.Join([]string{"invalid", "hl71", messagesPathComponent, "msg1"}, "/"),
 		},
 		{
 			"invalid messages component",
-			validParentPath + strings.Join([]string{hl7StoresPathComponent, "hl71", "invalid", "msg1"}, "/"),
+			validParentPath + strings.Join([]string{hl7V2StoresPathComponent, "hl71", "invalid", "msg1"}, "/"),
 		},
 		{
 			"missing message ID and messages component",
-			validParentPath + strings.Join([]string{hl7StoresPathComponent, "hl71"}, "/"),
+			validParentPath + strings.Join([]string{hl7V2StoresPathComponent, "hl71"}, "/"),
 		},
 	}
 
 	for _, test := range tests {
-		if pRef, lID, dID, hl7StoreID, msgID, err := ParseHL7MessageName(test.msgName); err == nil {
-			t.Errorf("%v: ParseHL7MessageName(%v) => (%v, %v, %v, %v, %v, nil) expected non nil error", test.name, test.msgName, pRef, lID, dID, hl7StoreID, msgID)
+		if pRef, lID, dID, hl7V2StoreID, msgID, err := ParseHL7V2MessageName(test.msgName); err == nil {
+			t.Errorf("%v: ParseHL7V2MessageName(%v) => (%v, %v, %v, %v, %v, nil) expected non nil error", test.name, test.msgName, pRef, lID, dID, hl7V2StoreID, msgID)
 		}
 	}
 }

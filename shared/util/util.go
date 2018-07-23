@@ -22,16 +22,16 @@ import (
 
 const (
 	// Common URL path components.
-	projectsPathComponent   = "projects"
-	locationsPathComponent  = "locations"
-	datasetsPathComponent   = "datasets"
-	hl7StoresPathComponent  = "hl7Stores"
-	messagesPathComponent   = "messages"
-	fhirStoresPathComponent = "fhirStores"
+	projectsPathComponent    = "projects"
+	locationsPathComponent   = "locations"
+	datasetsPathComponent    = "datasets"
+	hl7V2StoresPathComponent = "hl7V2Stores"
+	messagesPathComponent    = "messages"
+	fhirStoresPathComponent  = "fhirStores"
 )
 
-// GenerateHL7StoreName puts together the components to form the name of a REST HL7 store resource.
-func GenerateHL7StoreName(projectReference, locationID, datasetID, hl7StoreID string) string {
+// GenerateHL7V2StoreName puts together the components to form the name of a REST HL7v2 store resource.
+func GenerateHL7V2StoreName(projectReference, locationID, datasetID, hl7V2StoreID string) string {
 	return strings.Join([]string{
 		projectsPathComponent,
 		projectReference,
@@ -39,15 +39,15 @@ func GenerateHL7StoreName(projectReference, locationID, datasetID, hl7StoreID st
 		locationID,
 		datasetsPathComponent,
 		datasetID,
-		hl7StoresPathComponent,
-		hl7StoreID,
+		hl7V2StoresPathComponent,
+		hl7V2StoreID,
 	}, "/")
 }
 
-// GenerateHL7MessageName puts together the components to form the name of a REST Message resource.
-func GenerateHL7MessageName(projectReference, locationID, datasetID, hl7StoreID, messageID string) string {
+// GenerateHL7V2MessageName puts together the components to form the name of a REST Message resource.
+func GenerateHL7V2MessageName(projectReference, locationID, datasetID, hl7V2StoreID, messageID string) string {
 	return strings.Join([]string{
-		GenerateHL7StoreName(projectReference, locationID, datasetID, hl7StoreID),
+		GenerateHL7V2StoreName(projectReference, locationID, datasetID, hl7V2StoreID),
 		messagesPathComponent,
 		messageID,
 	}, "/")
@@ -67,12 +67,12 @@ func GenerateFHIRStoreName(projectReference, locationID, datasetID, fhirStoreID 
 	}, "/")
 }
 
-// ParseHL7MessageName parses the project reference, location id, dataset id,
-// HL7 store id, and message id from the given resource name.
-func ParseHL7MessageName(name string) (string, string, string, string, string, error) {
+// ParseHL7V2MessageName parses the project reference, location id, dataset id,
+// HL7v2 store id, and message id from the given resource name.
+func ParseHL7V2MessageName(name string) (string, string, string, string, string, error) {
 	parts := strings.Split(name, "/")
 	ids, i := []string{}, 0
-	allComponents := []string{projectsPathComponent, locationsPathComponent, datasetsPathComponent, hl7StoresPathComponent, messagesPathComponent}
+	allComponents := []string{projectsPathComponent, locationsPathComponent, datasetsPathComponent, hl7V2StoresPathComponent, messagesPathComponent}
 	for _, component := range allComponents {
 		if len(component) != 0 {
 			if len(parts) <= i || parts[i] != component {

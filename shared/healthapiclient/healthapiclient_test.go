@@ -33,13 +33,13 @@ const (
 	projectReference    = "123"
 	locationID          = "test-central1"
 	datasetID           = "456"
-	hl7StoreID          = "678"
+	hl7V2StoreID        = "678"
 	msgID               = "890"
 	fhirStoreID         = "101"
 	fhirResID           = "p1"
-	pathPrefix          = "/projects/123/locations/test-central1/datasets/456/hl7Stores/678/messages/"
-	sendPath            = "/projects/123/locations/test-central1/datasets/456/hl7Stores/678/messages:ingest"
-	getPath             = "/projects/123/locations/test-central1/datasets/456/hl7Stores/678/messages/890"
+	pathPrefix          = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/"
+	sendPath            = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages:ingest"
+	getPath             = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/890"
 	executeBundlePath   = "/projects/123/locations/test-central1/datasets/456/fhirStores/101"
 	createdResourceName = "projects/123/locations/test-central1/datasets/456/fhirStores/101/resources/Patient/06406a39-f4ff-43e1-8ea3-6d9f542870c8"
 )
@@ -142,16 +142,16 @@ func setUp() *httptest.Server {
 	))
 }
 
-// newHL7Client creates a new Client pointed to a fake HL7 service.
-func newHL7Client(client *http.Client, apiAddrPrefix, projectReference, locationID, datasetID, hl7StoreID string) *HL7Client {
-	c := &HL7Client{
+// newHL7V2Client creates a new Client pointed to a fake HL7v2 service.
+func newHL7V2Client(client *http.Client, apiAddrPrefix, projectReference, locationID, datasetID, hl7V2StoreID string) *HL7V2Client {
+	c := &HL7V2Client{
 		metrics:          monitoring.NewClient(),
 		client:           client,
 		apiAddrPrefix:    apiAddrPrefix,
 		projectReference: projectReference,
 		locationID:       locationID,
 		datasetID:        datasetID,
-		hl7StoreID:       hl7StoreID,
+		hl7V2StoreID:     hl7V2StoreID,
 	}
 	c.initMetrics()
 	return c
@@ -175,7 +175,7 @@ func TestSend(t *testing.T) {
 		name             string
 		projectReference string
 		datasetID        string
-		hl7StoreID       string
+		hl7V2StoreID     string
 		msgs             [][]byte
 		expectedMetrics  map[string]int64
 	}{
@@ -183,7 +183,7 @@ func TestSend(t *testing.T) {
 			"single message",
 			projectReference,
 			datasetID,
-			hl7StoreID,
+			hl7V2StoreID,
 			[][]byte{cannedMsg},
 			map[string]int64{sentMetric: 1, sendErrorMetric: 0},
 		},
@@ -191,7 +191,7 @@ func TestSend(t *testing.T) {
 			"multiple messages",
 			projectReference,
 			datasetID,
-			hl7StoreID,
+			hl7V2StoreID,
 			[][]byte{cannedMsg, cannedMsg, cannedMsg},
 			map[string]int64{sentMetric: 3, sendErrorMetric: 0},
 		},
@@ -201,7 +201,7 @@ func TestSend(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setUp()
 			defer s.Close()
-			c := newHL7Client(s.Client(), s.URL, tc.projectReference, locationID, tc.datasetID, tc.hl7StoreID)
+			c := newHL7V2Client(s.Client(), s.URL, tc.projectReference, locationID, tc.datasetID, tc.hl7V2StoreID)
 			for _, msg := range tc.msgs {
 				ack, err := c.Send(msg)
 				if err != nil {
@@ -224,7 +224,7 @@ func TestSendError(t *testing.T) {
 		name             string
 		projectReference string
 		datasetID        string
-		hl7StoreID       string
+		hl7V2StoreID     string
 		msgs             [][]byte
 		expectedMetrics  map[string]int64
 	}{
@@ -232,7 +232,7 @@ func TestSendError(t *testing.T) {
 			"wrong project ID",
 			"wrongproject",
 			datasetID,
-			hl7StoreID,
+			hl7V2StoreID,
 			[][]byte{cannedMsg},
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
@@ -240,15 +240,15 @@ func TestSendError(t *testing.T) {
 			"wrong dataset ID",
 			projectReference,
 			"wrongdataset",
-			hl7StoreID,
+			hl7V2StoreID,
 			[][]byte{cannedMsg},
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
 		{
-			"wrong HL7 store ID",
+			"wrong HL7v2 store ID",
 			projectReference,
 			datasetID,
-			"wronghl7store",
+			"wronghl7v2store",
 			[][]byte{cannedMsg},
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
@@ -258,7 +258,7 @@ func TestSendError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setUp()
 			defer s.Close()
-			c := newHL7Client(s.Client(), s.URL, tc.projectReference, locationID, tc.datasetID, tc.hl7StoreID)
+			c := newHL7V2Client(s.Client(), s.URL, tc.projectReference, locationID, tc.datasetID, tc.hl7V2StoreID)
 			for _, msg := range tc.msgs {
 				ack, err := c.Send(msg)
 				if err == nil {
@@ -277,8 +277,8 @@ func TestGet(t *testing.T) {
 	s := setUp()
 	defer s.Close()
 	toSend = map[string][]byte{msgID: cannedMsg}
-	c := newHL7Client(s.Client(), s.URL, projectReference, locationID, datasetID, hl7StoreID)
-	msg, err := c.Get(util.GenerateHL7MessageName(projectReference, locationID, datasetID, hl7StoreID, msgID))
+	c := newHL7V2Client(s.Client(), s.URL, projectReference, locationID, datasetID, hl7V2StoreID)
+	msg, err := c.Get(util.GenerateHL7V2MessageName(projectReference, locationID, datasetID, hl7V2StoreID, msgID))
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -297,17 +297,17 @@ func TestGetError(t *testing.T) {
 	}{
 		{
 			"wrong project ID",
-			util.GenerateHL7MessageName("wrong", locationID, datasetID, hl7StoreID, msgID),
+			util.GenerateHL7V2MessageName("wrong", locationID, datasetID, hl7V2StoreID, msgID),
 			map[string]int64{fetchedMetric: 1, fetchErrorMetric: 0, fetchErrorInternalMetric: 1},
 		},
 		{
 			"wrong dataset ID",
-			util.GenerateHL7MessageName(projectReference, locationID, "wrong", hl7StoreID, msgID),
+			util.GenerateHL7V2MessageName(projectReference, locationID, "wrong", hl7V2StoreID, msgID),
 			map[string]int64{fetchedMetric: 1, fetchErrorMetric: 0, fetchErrorInternalMetric: 1},
 		},
 		{
-			"wrong HL7 store ID",
-			util.GenerateHL7MessageName(projectReference, locationID, datasetID, "wrong", msgID),
+			"wrong HL7v2 store ID",
+			util.GenerateHL7V2MessageName(projectReference, locationID, datasetID, "wrong", msgID),
 			map[string]int64{fetchedMetric: 1, fetchErrorMetric: 0, fetchErrorInternalMetric: 1},
 		},
 		{
@@ -317,7 +317,7 @@ func TestGetError(t *testing.T) {
 		},
 		{
 			"message not found",
-			util.GenerateHL7MessageName(projectReference, locationID, datasetID, hl7StoreID, "wrong"),
+			util.GenerateHL7V2MessageName(projectReference, locationID, datasetID, hl7V2StoreID, "wrong"),
 			map[string]int64{fetchedMetric: 1, fetchErrorMetric: 1, fetchErrorInternalMetric: 0},
 		},
 	}
@@ -325,7 +325,7 @@ func TestGetError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setUp()
 			defer s.Close()
-			c := newHL7Client(s.Client(), s.URL, projectReference, locationID, datasetID, hl7StoreID)
+			c := newHL7V2Client(s.Client(), s.URL, projectReference, locationID, datasetID, hl7V2StoreID)
 			msg, err := c.Get(tc.msgName)
 			if err == nil {
 				t.Errorf("Expected error but got %v", msg)

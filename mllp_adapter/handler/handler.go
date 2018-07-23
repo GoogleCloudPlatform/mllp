@@ -29,7 +29,7 @@ const (
 	ignoredMetric    = "pubsub-messages-ignored"
 )
 
-// Fetcher fetches messages from HL7 stores.
+// Fetcher fetches messages from HL7v2 stores.
 type Fetcher interface {
 	Get(string) ([]byte, error)
 }

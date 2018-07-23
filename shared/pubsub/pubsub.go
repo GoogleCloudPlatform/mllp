@@ -56,13 +56,13 @@ func (m *messageWrapper) Attrs() map[string]string {
 	return m.msg.Attributes
 }
 
-// MessageHandler is the interface for handling HL7 messages.
+// MessageHandler is the interface for handling HL7v2 messages.
 type MessageHandler interface {
 	Handle(Message)
 }
 
 // Listen listens for notifications from a pubsub subscription, uses the ids
-// in the messages to fetch content with the HL7 API, then sends the message
+// in the messages to fetch content with the HL7v2 API, then sends the message
 // to the partner over MLLP.
 func Listen(ctx context.Context, h MessageHandler, projectID string, topic string) error {
 	ts, err := goauth2.DefaultTokenSource(ctx)

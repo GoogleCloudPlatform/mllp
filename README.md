@@ -1,6 +1,6 @@
 # MLLP Adapter
 
-The MLLP(Short for "Minimal Lower Layer Protocol") adapter is a component that runs on [GKE](https://cloud.google.com/kubernetes-engine/), receives HL7 messages via MLLP/TCP, and forwards messages received to HL7 API.
+The MLLP(Short for "Minimal Lower Layer Protocol") adapter is a component that runs on [GKE](https://cloud.google.com/kubernetes-engine/), receives HL7v2 messages via MLLP/TCP, and forwards messages received to HL7v2 API.
 
 ## Requirements
 
@@ -34,7 +34,7 @@ docker images
 To run the image locally:
 
 ```bash
-docker run --network=host -v ~/.config:/root/.config bazel:mllp_adapter_docker /usr/mllp_adapter/mllp_adapter --hl7_project_id=<PROJECT_ID> --hl7_location_id=<LOCATION_ID> --hl7_dataset_id=<DATASET_ID> --hl7_store_id=<STORE_ID> --export_stats=false --receiver_ip=127.0.0.1 --pubsub_project_id=<PUBSUB_PROJECT_ID> --pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID> --api_addr_prefix=<API_ADDR_PREFIX>
+docker run --network=host -v ~/.config:/root/.config bazel:mllp_adapter_docker /usr/mllp_adapter/mllp_adapter --hl7_v2_project_id=<PROJECT_ID> --hl7_v2_location_id=<LOCATION_ID> --hl7_v2_dataset_id=<DATASET_ID> --hl7_v2_store_id=<STORE_ID> --export_stats=false --receiver_ip=127.0.0.1 --pubsub_project_id=<PUBSUB_PROJECT_ID> --pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID> --api_addr_prefix=<API_ADDR_PREFIX>
 ```
 
 In the command above:
@@ -45,7 +45,7 @@ Also note that:
 * `PUBSUB_PROJECT_ID` and `PUBSUB_SUBSCRIPTION_ID` are available by creating a pubsub topic and a subscription on Google Cloud;
 * `API_ADDR_PREFIX` is of form `https://www.google.com:443/v1`, scheme, port and version should all be presented.
 
-You should be able to send HL7 messages now:
+You should be able to send HL7v2 messages now:
 
 ```bash
 # This will fail because the format is invalid.
@@ -92,10 +92,10 @@ spec:
           command:
             - "/usr/mllp_adapter/mllp_adapter"
             - "--port=2575"
-            - "--hl7_project_id=<PROJECT_ID>"
-            - "--hl7_location_id=<LOCATION_ID>"
-            - "--hl7_dataset_id=<DATASET_ID>"
-            - "--hl7_store_id=<STORE_ID>"
+            - "--hl7_v2_project_id=<PROJECT_ID>"
+            - "--hl7_v2_location_id=<LOCATION_ID>"
+            - "--hl7_v2_dataset_id=<DATASET_ID>"
+            - "--hl7_v2_store_id=<STORE_ID>"
             - "--api_addr_prefix=<API_ADDR_PREFIX>"
             - "--logtostderr"
             - "--receiver_ip=<RECEIVER_IP>"
@@ -203,10 +203,10 @@ spec:
           command:
             - "/usr/mllp_adapter/mllp_adapter"
             - "--port=2575"
-            - "--hl7_project_id=<PROJECT_ID>"
-            - "--hl7_location_id=<LOCATION_ID>"
-            - "--hl7_dataset_id=<DATASET_ID>"
-            - "--hl7_store_id=<STORE_ID>"
+            - "--hl7_v2_project_id=<PROJECT_ID>"
+            - "--hl7_v2_location_id=<LOCATION_ID>"
+            - "--hl7_v2_dataset_id=<DATASET_ID>"
+            - "--hl7_v2_store_id=<STORE_ID>"
             - "--api_addr_prefix=<API_ADDR_PREFIX>"
             - "--logtostderr"
             - "--receiver_ip=<RECEIVER_IP>"

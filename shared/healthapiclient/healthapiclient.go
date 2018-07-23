@@ -45,15 +45,15 @@ const (
 	fetchErrorInternalMetric = "apiclient-fetch-error-internal"
 )
 
-// HL7Client represents a client of the HL7 API.
-type HL7Client struct {
+// HL7V2Client represents a client of the HL7v2 API.
+type HL7V2Client struct {
 	metrics          *monitoring.Client
 	client           *http.Client
 	apiAddrPrefix    string
 	projectReference string
 	locationID       string
 	datasetID        string
-	hl7StoreID       string
+	hl7V2StoreID     string
 }
 
 // FHIRClient represents a client of the FHIR API.
@@ -76,12 +76,12 @@ type sendMessageReq struct {
 }
 
 type sendMessageResp struct {
-	Hl7Ack []byte `json:"hl7_ack"`
+	Hl7Ack []byte `json:"hl7Ack"`
 }
 
-// NewHL7Client creates a properly authenticated client that talks to an HL7 backend.
-func NewHL7Client(ctx context.Context, metrics *monitoring.Client, apiAddrPrefix, projectID, locationID, datasetID, hl7StoreID string) (*HL7Client, error) {
-	if err := validatesComponents(projectID, locationID, datasetID, hl7StoreID); err != nil {
+// NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
+func NewHL7V2Client(ctx context.Context, metrics *monitoring.Client, apiAddrPrefix, projectID, locationID, datasetID, hl7V2StoreID string) (*HL7V2Client, error) {
+	if err := validatesComponents(projectID, locationID, datasetID, hl7V2StoreID); err != nil {
 		return nil, err
 	}
 
@@ -90,20 +90,20 @@ func NewHL7Client(ctx context.Context, metrics *monitoring.Client, apiAddrPrefix
 		return nil, err
 	}
 
-	c := &HL7Client{
+	c := &HL7V2Client{
 		metrics:          metrics,
 		client:           httpClient,
 		apiAddrPrefix:    apiAddrPrefix,
 		projectReference: projectID,
 		locationID:       locationID,
 		datasetID:        datasetID,
-		hl7StoreID:       hl7StoreID,
+		hl7V2StoreID:     hl7V2StoreID,
 	}
 	c.initMetrics()
 	return c, nil
 }
 
-func (c *HL7Client) initMetrics() {
+func (c *HL7V2Client) initMetrics() {
 	c.metrics.NewInt64(sentMetric)
 	c.metrics.NewInt64(sendErrorMetric)
 	c.metrics.NewInt64(fetchedMetric)
@@ -171,7 +171,7 @@ func initHTTPClient(ctx context.Context, apiAddrPrefix string) (*http.Client, er
 
 // Send sends a message to the endpoint and returns the response.
 // Returns an error if the request fails.
-func (c *HL7Client) Send(data []byte) ([]byte, error) {
+func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	c.metrics.Inc(sentMetric)
 
 	msg, err := json.Marshal(sendMessageReq{Msg: message{Data: data}})
@@ -182,7 +182,7 @@ func (c *HL7Client) Send(data []byte) ([]byte, error) {
 
 	log.Infof("Sending message of size %v.", len(data))
 	resp, err := c.client.Post(
-		fmt.Sprintf("%v/%v/%v", c.apiAddrPrefix, util.GenerateHL7StoreName(c.projectReference, c.locationID, c.datasetID, c.hl7StoreID), sendSuffix),
+		fmt.Sprintf("%v/%v/%v", c.apiAddrPrefix, util.GenerateHL7V2StoreName(c.projectReference, c.locationID, c.datasetID, c.hl7V2StoreID), sendSuffix),
 		contentType, bytes.NewReader(msg))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		c.metrics.Inc(sendErrorMetric)
@@ -208,9 +208,9 @@ func (c *HL7Client) Send(data []byte) ([]byte, error) {
 
 // Get retrieves a message from the server.
 // Returns an error if the request fails.
-func (c *HL7Client) Get(msgName string) ([]byte, error) {
+func (c *HL7V2Client) Get(msgName string) ([]byte, error) {
 	c.metrics.Inc(fetchedMetric)
-	projectReference, locationID, datasetID, hl7StoreID, _, err := util.ParseHL7MessageName(msgName)
+	projectReference, locationID, datasetID, hl7V2StoreID, _, err := util.ParseHL7V2MessageName(msgName)
 	if err != nil {
 		c.metrics.Inc(fetchErrorInternalMetric)
 		return nil, fmt.Errorf("parsing message name: %v", err)
@@ -227,9 +227,9 @@ func (c *HL7Client) Get(msgName string) ([]byte, error) {
 		c.metrics.Inc(fetchErrorInternalMetric)
 		return nil, fmt.Errorf("message name %v is not from expected dataset %v", msgName, c.datasetID)
 	}
-	if hl7StoreID != c.hl7StoreID {
+	if hl7V2StoreID != c.hl7V2StoreID {
 		c.metrics.Inc(fetchErrorInternalMetric)
-		return nil, fmt.Errorf("message name %v is not from expected HL7 store %v", msgName, c.hl7StoreID)
+		return nil, fmt.Errorf("message name %v is not from expected HL7v2 store %v", msgName, c.hl7V2StoreID)
 	}
 
 	log.Infof("Started to fetch message.")

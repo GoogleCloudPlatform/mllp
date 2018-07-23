@@ -38,10 +38,10 @@ var (
 	receiverIP         = flag.String("receiver_ip", "", "IP address for incoming MLLP connections")
 	pubsubProjectID    = flag.String("pubsub_project_id", "", "Project ID that owns the pubsub topic")
 	pubsubSubscription = flag.String("pubsub_subscription", "", "Pubsub subscription to read for notifications of new messages")
-	hl7ProjectID       = flag.String("hl7_project_id", "", "Project ID that owns the healthcare dataset")
-	hl7LocationID      = flag.String("hl7_location_id", "", "ID of Cloud Location where the healthcare dataset is stored")
-	hl7DatasetID       = flag.String("hl7_dataset_id", "", "ID of the healthcare dataset")
-	hl7StoreID         = flag.String("hl7_store_id", "", "ID the HL7 store inside the healthcare dataset")
+	hl7V2ProjectID     = flag.String("hl7_v2_project_id", "", "Project ID that owns the healthcare dataset")
+	hl7V2LocationID    = flag.String("hl7_v2_location_id", "", "ID of Cloud Location where the healthcare dataset is stored")
+	hl7V2DatasetID     = flag.String("hl7_v2_dataset_id", "", "ID of the healthcare dataset")
+	hl7V2StoreID       = flag.String("hl7_v2_store_id", "", "ID of the HL7v2 store inside the healthcare dataset")
 	exportStats        = flag.Bool("export_stats", true, "Whether to export stackdriver stats")
 )
 
@@ -63,9 +63,9 @@ func main() {
 		}()
 	}
 
-	apiClient, err := healthapiclient.NewHL7Client(ctx, mon, *apiAddrPrefix, *hl7ProjectID, *hl7LocationID, *hl7DatasetID, *hl7StoreID)
+	apiClient, err := healthapiclient.NewHL7V2Client(ctx, mon, *apiAddrPrefix, *hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID)
 	if err != nil {
-		log.Fatalf("healthapiclient.NewHL7Client: %v", err)
+		log.Fatalf("healthapiclient.NewHL7V2Client: %v", err)
 	}
 
 	if *pubsubProjectID == "" || *pubsubSubscription == "" {
