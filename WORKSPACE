@@ -98,7 +98,7 @@ go_register_toolchains()
 
 git_repository(
     name = "io_bazel_rules_docker",
-    commit = "198367210c55fba5dded22274adde1a289801dc4",
+    commit = "91c7e1ca7a734f3cfdbd63641a1d1b3a53009759",
     remote = "https://github.com/bazelbuild/rules_docker.git",
 )
 

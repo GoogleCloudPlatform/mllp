@@ -8,7 +8,15 @@ The MLLP(Short for "Minimal Lower Layer Protocol") adapter is a component that r
 * A [Docker](https://docs.docker.com/) repository. The following instructions assume the use of [Google Container Registry](https://cloud.google.com/container-registry/).
 * Installed [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) command line tools.
 
-## Build
+## Pull
+
+The prebuilt docker image is staged on Google Container Registry (GCR). You may pull the latest image by running:
+
+```bash
+docker pull gcr.io/cloud-healthcare-containers/mllp-adapter:latest
+```
+
+## Build (Optional)
 
 We use bazel as the build tool. Please refer to [the bazel documentation](https://docs.bazel.build/versions/master/getting-started.html) to get started.
 
@@ -31,10 +39,12 @@ If docker is installed on your system, you should be able to see the image:
 docker images
 ```
 
+## Test Locally
+
 To run the image locally:
 
 ```bash
-docker run --network=host -v ~/.config:/root/.config bazel:mllp_adapter_docker /usr/mllp_adapter/mllp_adapter --hl7_v2_project_id=<PROJECT_ID> --hl7_v2_location_id=<LOCATION_ID> --hl7_v2_dataset_id=<DATASET_ID> --hl7_v2_store_id=<STORE_ID> --export_stats=false --receiver_ip=127.0.0.1 --pubsub_project_id=<PUBSUB_PROJECT_ID> --pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID> --api_addr_prefix=<API_ADDR_PREFIX>
+docker run --network=host -v ~/.config:/root/.config gcr.io/cloud-healthcare-containers/mllp-adapter /usr/mllp_adapter/mllp_adapter --hl7_v2_project_id=<PROJECT_ID> --hl7_v2_location_id=<LOCATION_ID> --hl7_v2_dataset_id=<DATASET_ID> --hl7_v2_store_id=<STORE_ID> --export_stats=false --receiver_ip=127.0.0.1 --pubsub_project_id=<PUBSUB_PROJECT_ID> --pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID> --api_addr_prefix=<API_ADDR_PREFIX>
 ```
 
 In the command above:
