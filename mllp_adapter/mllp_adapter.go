@@ -17,10 +17,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	
 	log "github.com/golang/glog"
-	"golang.org/x/net/context"
 	"mllp_adapter/handler"
 	"mllp_adapter/mllpreceiver"
 	"mllp_adapter/mllpsender"
