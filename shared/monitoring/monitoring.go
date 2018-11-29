@@ -17,13 +17,13 @@
 package monitoring
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sync"
 	"time"
 
 	log "github.com/golang/glog"
-	"golang.org/x/net/context"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/googleapis/gax-go"
 	"cloud.google.com/go/compute/metadata"

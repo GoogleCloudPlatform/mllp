@@ -15,10 +15,9 @@
 package monitoring
 
 import (
+	"context"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	tspb "github.com/golang/protobuf/ptypes"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"

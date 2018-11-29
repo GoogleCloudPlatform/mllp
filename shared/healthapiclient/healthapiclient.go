@@ -17,13 +17,13 @@ package healthapiclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	log "github.com/golang/glog"
-	"golang.org/x/net/context"
 	"shared/monitoring"
 	"shared/util"
 

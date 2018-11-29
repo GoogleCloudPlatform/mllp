@@ -17,9 +17,9 @@
 package pubsub
 
 import (
+	"context"
 	"fmt"
 
-	"golang.org/x/net/context"
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
 
