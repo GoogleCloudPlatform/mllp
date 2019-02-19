@@ -12,77 +12,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
 http_archive(
     name = "io_bazel_rules_go",
-    url = "https://github.com/bazelbuild/rules_go/releases/download/0.9.0/rules_go-0.9.0.tar.gz",
-    sha256 = "4d8d6244320dd751590f9100cf39fd7a4b75cd901e1f3ffdfd6f048328883695",
+    urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.17.0/rules_go-0.17.0.tar.gz"],
+    sha256 = "492c3ac68ed9dcf527a07e6a1b2dcbf199c6bf8b35517951467ac32e421c06c1",
 )
 
 http_archive(
     name = "bazel_gazelle",
-    url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.9/bazel-gazelle-0.9.tar.gz",
-    sha256 = "0103991d994db55b3b5d7b06336f8ae355739635e0c2379dea16b8213ea5a223",
+    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.16.0/bazel-gazelle-0.16.0.tar.gz"],
+    sha256 = "7949fc6cc17b5b191103e97481cf8889217263acf52e00b560683413af204fcb",
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains", "go_repository")
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+go_rules_dependencies()
+go_register_toolchains()
+
+gazelle_dependencies()
 
 go_repository(
     name = "io_opencensus_go",
-    commit = "e3cae8bbf0ad88a4fa08b3989da469d9e8d7792e",
+    commit = "57c09932883846047fd542903575671cb6b75070",
     importpath = "go.opencensus.io",
 )
 
 go_repository(
     name = "org_golang_google_grpc",
-    commit = "583a6303969ea5075e9bd1dc4b75805dfe66989a",
+    commit = "a718efe0f40854b1f8bf60c04bfc9f8e8f6296db",
     importpath = "google.golang.org/grpc",
 )
 
 go_repository(
     name = "org_golang_google_api",
-    commit = "ab90adb3efa287b869ecb698db42f923cc734972",
+    commit = "77d02fa16783d31ba92e59fc0a888a45635f433e",
     importpath = "google.golang.org/api",
 )
 
 go_repository(
-    name = "com_github_golang_protobuf",
-    commit = "bbd03ef6da3a115852eaf24c8a1c46aeb39aa175",
-    importpath = "github.com/golang/protobuf",
-)
-
-go_repository(
     name = "org_golang_google_genproto",
-    commit = "2b5a72b8730b0b16380010cfe5286c42108d88e7",
+    commit = "8819c946db4494a2259bf100a377f51aa585d893",
     importpath = "google.golang.org/genproto",
 )
 
 go_repository(
     name = "com_github_googleapis_gax_go",
-    commit = "317e0006254c44a0ac427cc52a0e083ff0b9622f",
+    commit = "ddfab93c3faef4935403ac75a7c11f0e731dc181",
     importpath = "github.com/googleapis/gax-go",
 )
 
 go_repository(
     name = "com_google_cloud_go",
-    commit = "dfdc5040dbf96e12b7ad6d8080d0c8bd380cb8f2",
+    commit = "f23c43891e43fa5323eb751293c177f0a4196b1a",
     importpath = "cloud.google.com/go",
 )
 
 go_repository(
     name = "org_golang_x_oauth2",
-    commit = "543e37812f10c46c622c9575afd7ad22f22a12ba",
+    commit = "3e8b2be1363542a95c52ea0796d4a40dacfb5b95",
     importpath = "golang.org/x/oauth2",
 )
 
 go_repository(
     name = "org_golang_x_sync",
-    commit = "fd80eb99c8f653c847d294a001bdf2a3a6f768f5",
+    commit = "37e7f081c4d4c64e13b10787722085407fe5d15f",
     importpath = "golang.org/x/sync",
 )
 
 go_repository(
     name = "org_golang_x_net",
-    commit = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb",
+    commit = "65e2d4e15006aab9813ff8769e768bbf4bb667a0",
     importpath = "golang.org/x/net",
 )
 
@@ -92,23 +95,28 @@ go_repository(
     importpath = "github.com/kylelemons/godebug",
 )
 
-go_rules_dependencies()
+go_repository(
+    name = "com_github_hashicorp_golang_lru",
+    commit = "20f1fb78b0740ba8c3cb143a61e86ba5c8669768",
+    importpath = "github.com/hashicorp/golang-lru",
+)
 
-go_register_toolchains()
-
-git_repository(
+http_archive(
     name = "io_bazel_rules_docker",
-    commit = "91c7e1ca7a734f3cfdbd63641a1d1b3a53009759",
-    remote = "https://github.com/bazelbuild/rules_docker.git",
+    sha256 = "aed1c249d4ec8f703edddf35cbe9dfaca0b5f5ea6e4cd9e83e99f3b0d1136c3d",
+    strip_prefix = "rules_docker-0.7.0",
+    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.7.0.tar.gz"],
 )
 
 load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")
 
 _go_image_repos()
 
-load("@io_bazel_rules_docker//container:container.bzl", container_repositories = "repositories", "container_pull")
+load("@io_bazel_rules_docker//repositories:repositories.bzl", container_repositories = "repositories")
 
 container_repositories()
+
+load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
 
 container_pull(
     name = "ubuntu",
@@ -116,7 +124,3 @@ container_pull(
     repository = "cloud-marketplace/google/ubuntu16_04",
     digest = "sha256:c81e8f6bcbab8818fdbe2df6d367990ab55d85b4dab300931a53ba5d082f4296",
 )
-
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
-gazelle_dependencies()
