@@ -24,17 +24,20 @@ import (
 	"time"
 
 	log "github.com/golang/glog"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	"shared/util"
 	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/monitoring/apiv3"
 	"google.golang.org/api/option"
 
+	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/googleapis/gax-go"
 	tspb "github.com/golang/protobuf/ptypes"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
-	goauth2 "golang.org/x/oauth2/google"
 )
+
+const scope = "https://www.googleapis.com/auth/monitoring.write"
 
 // timeNow is used for testing.
 var timeNow = time.Now
@@ -52,11 +55,11 @@ func NewClient() *Client {
 
 // ConfigureExport prepares a Client for exporting metrics. It fetches metadata
 // about the GCP environment and fails if not running on GCE or GKE.
-func ConfigureExport(ctx context.Context, cl *Client) error {
+func ConfigureExport(ctx context.Context, cl *Client, cred string) error {
 	if !metadata.OnGCE() {
 		return fmt.Errorf("not running on GCE - metrics cannot be exported")
 	}
-	ts, err := goauth2.DefaultTokenSource(ctx)
+	ts, err := util.TokenSource(ctx, cred, scope)
 	if err != nil {
 		return fmt.Errorf("getting default token source: %v", err)
 	}
@@ -205,6 +208,6 @@ func (m *Client) makeCreateTimeSeriesRequest() *monitoringpb.CreateTimeSeriesReq
 
 // metric is a numeric value that is exported to the monitoring service.
 type metric struct {
-	startTime *timestamp.Timestamp
+	startTime *timestamppb.Timestamp
 	value     int64
 }

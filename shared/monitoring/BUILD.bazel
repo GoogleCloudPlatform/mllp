@@ -21,6 +21,7 @@ go_library(
     srcs = ["monitoring.go"],
     importpath = "shared/monitoring",
     deps = [
+        "//shared/util:go_default_library",
         "@com_github_golang_glog//:go_default_library",
         "@com_github_golang_protobuf//ptypes:go_default_library",
         "@com_github_golang_protobuf//ptypes/timestamp:go_default_library",

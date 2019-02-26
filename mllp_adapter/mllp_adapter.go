@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+
 	"flag"
 	
 	log "github.com/golang/glog"
@@ -42,7 +43,8 @@ var (
 	hl7V2LocationID    = flag.String("hl7_v2_location_id", "", "ID of Cloud Location where the healthcare dataset is stored")
 	hl7V2DatasetID     = flag.String("hl7_v2_dataset_id", "", "ID of the healthcare dataset")
 	hl7V2StoreID       = flag.String("hl7_v2_store_id", "", "ID of the HL7v2 store inside the healthcare dataset")
-	exportStats        = flag.Bool("export_stats", true, "Whether to export stackdriver stats")
+	exportStats        = flag.Bool("export_stats", true, "[Optional] Whether to export stackdriver stats")
+	credentials        = flag.String("credentials", "", "[Optional] Path to the credentials file (in JSON format). The default service account will be used if not provided.")
 )
 
 func main() {
@@ -53,7 +55,7 @@ func main() {
 	var mon *monitoring.Client
 	if *exportStats {
 		mon = monitoring.NewClient()
-		if err := monitoring.ConfigureExport(ctx, mon); err != nil {
+		if err := monitoring.ConfigureExport(ctx, mon, *credentials); err != nil {
 			log.Fatalf("monitoring.ConfigureExport: %v", err)
 		}
 		// Initial export delay is between 45 and 45+30 seconds
@@ -63,7 +65,7 @@ func main() {
 		}()
 	}
 
-	apiClient, err := healthapiclient.NewHL7V2Client(ctx, mon, *apiAddrPrefix, *hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID)
+	apiClient, err := healthapiclient.NewHL7V2Client(ctx, *credentials, mon, *apiAddrPrefix, *hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID)
 	if err != nil {
 		log.Fatalf("healthapiclient.NewHL7V2Client: %v", err)
 	}
@@ -74,7 +76,7 @@ func main() {
 		sender := mllpsender.NewSender(*mllpAddr, mon)
 		handler := handler.New(mon, apiClient, sender)
 		go func() {
-			err := pubsub.Listen(ctx, handler, *pubsubProjectID, *pubsubSubscription)
+			err := pubsub.Listen(ctx, *credentials, handler, *pubsubProjectID, *pubsubSubscription)
 			log.Fatalf("pubsub.Listen: %v", err)
 		}()
 	}

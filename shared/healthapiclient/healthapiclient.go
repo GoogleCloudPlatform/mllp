@@ -29,7 +29,6 @@ import (
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/transport"
-	goauth2 "golang.org/x/oauth2/google"
 )
 
 const (
@@ -80,12 +79,12 @@ type sendMessageResp struct {
 }
 
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
-func NewHL7V2Client(ctx context.Context, metrics *monitoring.Client, apiAddrPrefix, projectID, locationID, datasetID, hl7V2StoreID string) (*HL7V2Client, error) {
+func NewHL7V2Client(ctx context.Context, cred string, metrics *monitoring.Client, apiAddrPrefix, projectID, locationID, datasetID, hl7V2StoreID string) (*HL7V2Client, error) {
 	if err := validatesComponents(projectID, locationID, datasetID, hl7V2StoreID); err != nil {
 		return nil, err
 	}
 
-	httpClient, err := initHTTPClient(ctx, apiAddrPrefix)
+	httpClient, err := initHTTPClient(ctx, cred, apiAddrPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +111,12 @@ func (c *HL7V2Client) initMetrics() {
 }
 
 // NewFHIRClient creates a properly authenticated client that talks to a FHIR backend.
-func NewFHIRClient(ctx context.Context, metrics *monitoring.Client, apiAddrPrefix, projectID, locationID, datasetID, fhirStoreID string) (*FHIRClient, error) {
+func NewFHIRClient(ctx context.Context, cred string, metrics *monitoring.Client, apiAddrPrefix, projectID, locationID, datasetID, fhirStoreID string) (*FHIRClient, error) {
 	if err := validatesComponents(projectID, locationID, datasetID, fhirStoreID); err != nil {
 		return nil, err
 	}
 
-	httpClient, err := initHTTPClient(ctx, apiAddrPrefix)
+	httpClient, err := initHTTPClient(ctx, cred, apiAddrPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -150,8 +149,8 @@ func validatesComponents(projectID, locationID, datasetID, storeID string) error
 }
 
 // initHTTPClient creates an HTTP client and does the authentication work.
-func initHTTPClient(ctx context.Context, apiAddrPrefix string) (*http.Client, error) {
-	ts, err := goauth2.DefaultTokenSource(ctx, scope)
+func initHTTPClient(ctx context.Context, cred string, apiAddrPrefix string) (*http.Client, error) {
+	ts, err := util.TokenSource(ctx, cred, scope)
 	if err != nil {
 		return nil, fmt.Errorf("oauth2google.DefaultTokenSource: %v", err)
 	}
@@ -184,20 +183,20 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	resp, err := c.client.Post(
 		fmt.Sprintf("%v/%v/%v", c.apiAddrPrefix, util.GenerateHL7V2StoreName(c.projectReference, c.locationID, c.datasetID, c.hl7V2StoreID), sendSuffix),
 		contentType, bytes.NewReader(msg))
-  if err != nil {
-    c.metrics.Inc(sendErrorMetric)
-    return nil, fmt.Errorf("request failed: %v", err)
-  }
-  defer resp.Body.Close()
-  body, err := ioutil.ReadAll(resp.Body)
-  if err != nil {
-    c.metrics.Inc(sendErrorMetric)
-    return nil, fmt.Errorf("unable to read data from response: %v", err)
-  }
-  if resp.StatusCode != http.StatusOK {
-    c.metrics.Inc(sendErrorMetric)
-    return nil, fmt.Errorf("request failed: %v\n%v", resp.StatusCode, string(body))
-  }
+	if err != nil {
+		c.metrics.Inc(sendErrorMetric)
+		return nil, fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		c.metrics.Inc(sendErrorMetric)
+		return nil, fmt.Errorf("unable to read data from response: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		c.metrics.Inc(sendErrorMetric)
+		return nil, fmt.Errorf("request failed: %v\n%v", resp.StatusCode, string(body))
+	}
 
 	var parsedResp *sendMessageResp
 	if err := json.Unmarshal(body, &parsedResp); err != nil {

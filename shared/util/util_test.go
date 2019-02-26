@@ -15,6 +15,7 @@
 package util
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -69,5 +70,13 @@ func TestParseHL7V2MessageName_Errors(t *testing.T) {
 		if pRef, lID, dID, hl7V2StoreID, msgID, err := ParseHL7V2MessageName(test.msgName); err == nil {
 			t.Errorf("%v: ParseHL7V2MessageName(%v) => (%v, %v, %v, %v, %v, nil) expected non nil error", test.name, test.msgName, pRef, lID, dID, hl7V2StoreID, msgID)
 		}
+	}
+}
+
+func TestTokenSource_NoSuchFile(t *testing.T) {
+	p := "some_file.json"
+	_, err := TokenSource(context.Background(), p)
+	if err == nil {
+		t.Errorf("TokenSource(ctx, %s) got no error, expected one ", p)
 	}
 }

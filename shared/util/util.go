@@ -16,8 +16,13 @@
 package util
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"strings"
+
+	goauth2 "golang.org/x/oauth2/google"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -91,4 +96,24 @@ func ParseHL7V2MessageName(name string) (string, string, string, string, string,
 	}
 
 	return ids[0], ids[1], ids[2], ids[3], ids[4], nil
+}
+
+// TokenSource creates a token source for authenticating against GCP services.
+// If a credentials file is provided (e.g. for a customized service account),
+// it will be used to generate the token source, otherwise the default service
+// account will be used.
+func TokenSource(ctx context.Context, cred string, scopes ...string) (oauth2.TokenSource, error) {
+	if cred == "" {
+		return goauth2.DefaultTokenSource(ctx, scopes...)
+	}
+	j, err := ioutil.ReadFile(cred)
+	if err != nil {
+		return nil, err
+	}
+	c, err := goauth2.CredentialsFromJSON(ctx, j, scopes...)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("***** %v", c.TokenSource)
+	return c.TokenSource, nil
 }

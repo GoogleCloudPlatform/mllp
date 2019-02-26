@@ -20,10 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	"shared/util"
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
-
-	goauth2 "golang.org/x/oauth2/google"
 )
 
 const (
@@ -31,6 +30,8 @@ const (
 	sendErrorMetric  = "pubsub-messages-send-error"
 	processedMetric  = "pubsub-messages-processed"
 	ignoredMetric    = "pubsub-messages-ignored"
+
+	scope = "https://www.googleapis.com/auth/pubsub"
 )
 
 // Message represents a pubsub message.
@@ -64,8 +65,8 @@ type MessageHandler interface {
 // Listen listens for notifications from a pubsub subscription, uses the ids
 // in the messages to fetch content with the HL7v2 API, then sends the message
 // to the partner over MLLP.
-func Listen(ctx context.Context, h MessageHandler, projectID string, topic string) error {
-	ts, err := goauth2.DefaultTokenSource(ctx)
+func Listen(ctx context.Context, cred string, h MessageHandler, projectID string, topic string) error {
+	ts, err := util.TokenSource(ctx, cred, scope)
 	if err != nil {
 		return fmt.Errorf("getting default token source: %v", err)
 	}

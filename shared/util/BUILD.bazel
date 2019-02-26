@@ -20,7 +20,10 @@ go_library(
     name = "go_default_library",
     srcs = ["util.go"],
     importpath = "shared/util",
-    deps = ["//shared/monitoring:go_default_library"],
+    deps = [
+        "@org_golang_x_oauth2//google:go_default_library",
+        "@org_golang_x_oauth2//:go_default_library",
+    ],
 )
 
 go_test(
