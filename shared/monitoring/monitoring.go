@@ -25,7 +25,6 @@ import (
 
 	log "github.com/golang/glog"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/googleapis/gax-go"
 	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/monitoring/apiv3"
 	"google.golang.org/api/option"

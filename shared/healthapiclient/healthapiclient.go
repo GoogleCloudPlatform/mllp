@@ -184,17 +184,20 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	resp, err := c.client.Post(
 		fmt.Sprintf("%v/%v/%v", c.apiAddrPrefix, util.GenerateHL7V2StoreName(c.projectReference, c.locationID, c.datasetID, c.hl7V2StoreID), sendSuffix),
 		contentType, bytes.NewReader(msg))
-	if err != nil || resp.StatusCode != http.StatusOK {
-		c.metrics.Inc(sendErrorMetric)
-		return nil, fmt.Errorf("request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		c.metrics.Inc(sendErrorMetric)
-		return nil, fmt.Errorf("unable to read data from response: %v", err)
-	}
+  if err != nil {
+    c.metrics.Inc(sendErrorMetric)
+    return nil, fmt.Errorf("request failed: %v", err)
+  }
+  defer resp.Body.Close()
+  body, err := ioutil.ReadAll(resp.Body)
+  if err != nil {
+    c.metrics.Inc(sendErrorMetric)
+    return nil, fmt.Errorf("unable to read data from response: %v", err)
+  }
+  if resp.StatusCode != http.StatusOK {
+    c.metrics.Inc(sendErrorMetric)
+    return nil, fmt.Errorf("request failed: %v\n%v", resp.StatusCode, string(body))
+  }
 
 	var parsedResp *sendMessageResp
 	if err := json.Unmarshal(body, &parsedResp); err != nil {
