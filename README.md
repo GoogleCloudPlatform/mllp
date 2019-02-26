@@ -1,16 +1,23 @@
 # MLLP Adapter
 
-The MLLP(Short for "Minimal Lower Layer Protocol") adapter is a component that runs on [GKE](https://cloud.google.com/kubernetes-engine/), receives HL7v2 messages via MLLP/TCP, and forwards messages received to HL7v2 API.
+The MLLP(Short for "Minimal Lower Layer Protocol") adapter is a component that
+runs on [GKE](https://cloud.google.com/kubernetes-engine/), receives HL7v2
+messages via MLLP/TCP, and forwards received messages to HL7v2 API.
 
 ## Requirements
 
-* A [Google Cloud project](https://cloud.google.com).
-* A [Docker](https://docs.docker.com/) repository. The following instructions assume the use of [Google Container Registry](https://cloud.google.com/container-registry/).
-* Installed [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) command line tools.
+*   A [Google Cloud project](https://cloud.google.com).
+*   A [Docker](https://docs.docker.com/) repository. The following instructions
+    assume the use of
+    [Google Container Registry](https://cloud.google.com/container-registry/).
+*   Installed [gcloud](https://cloud.google.com/sdk/gcloud/) and
+    [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) command
+    line tools.
 
 ## Pull
 
-The prebuilt docker image is staged on Google Container Registry (GCR). You may pull the latest image by running:
+The prebuilt docker image is staged on Google Container Registry (GCR). You may
+pull the latest image by running:
 
 ```bash
 docker pull gcr.io/cloud-healthcare-containers/mllp-adapter:latest
@@ -18,7 +25,9 @@ docker pull gcr.io/cloud-healthcare-containers/mllp-adapter:latest
 
 ## Build (Optional)
 
-We use bazel as the build tool. Please refer to [the bazel documentation](https://docs.bazel.build/versions/master/getting-started.html) to get started.
+We use bazel as the build tool. Please refer to
+[the bazel documentation](https://docs.bazel.build/versions/master/getting-started.html)
+to get started.
 
 Run the following commands to build the MLLP adapter binary:
 
@@ -49,11 +58,14 @@ docker run --network=host -v ~/.config:/root/.config gcr.io/cloud-healthcare-con
 
 In the command above:
 * `--network=host` is used to expose the port of the container;
-* `-v ~/.config:/root/.config` is used to give the container access to gcloud credentials;
+* `-v ~/.config:/root/.config` is used to give the container access
+to gcloud credentials;
 
 Also note that:
-* `PUBSUB_PROJECT_ID` and `PUBSUB_SUBSCRIPTION_ID` are available by creating a pubsub topic and a subscription on Google Cloud;
-* `API_ADDR_PREFIX` is of form `https://www.google.com:443/v1`, scheme, port and version should all be presented.
+* `PUBSUB_PROJECT_ID` and `PUBSUB_SUBSCRIPTION_ID` are available
+by creating a pubsub topic and a subscription on Google Cloud;
+* `API_ADDR_PREFIX` is of form `https://www.google.com:443/v1`, scheme, port and
+version should all be presented.
 
 You should be able to send HL7v2 messages now:
 
@@ -64,20 +76,39 @@ echo -n -e '\x0btestmessage\x1c\x0d' | telnet localhost 2575
 
 ## Deployment
 
-Before deploying the docker image to GKE you need to publish the image to a registry.  First modify `BUILD.bazel` to replace `my-project` and `my-image` with real values, then run:
+### Use Customized Service Account
+
+If you want to use a custom service account instead of the default GCE service
+account, make sure the custom service account is passed as `--service-account`
+parameter while creating the cluster (See the
+[doc](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create)).
+
+The custom service account will require the following permissions to work
+properly: * roles/pubsub.subscriber. This is required only if you need the MLLP
+adapter to listen for pubsub notifications and forward the HL7v2 messages to
+HL7v2 stores. This role only needs to be set on a per-subscription basis. *
+roles/healthcare.hl7V2Ingest. * roles/monitoring.metricWriter. This is for
+writing metrics to Stackdriver. You don't need this if `--exportStats` is set to
+`false`.
+
+Before deploying the docker image to GKE you need to publish the image to a
+registry. First modify `BUILD.bazel` to replace `my-project` and `my-image` with
+real values, then run:
 
 ```bash
 bazel run :image_push
 ```
-If this fails with the error message "ModuleNotFoundError: No module named 'urlparse'",
-you are hitting a python 3 bug in the google/containerregistry repo (https://github.com/google/containerregistry/issues/42).
-Fix this by setting:
+
+If this fails with the error message "ModuleNotFoundError: No module named
+'urlparse'", you are hitting a python 3 bug in the google/containerregistry repo
+(https://github.com/google/containerregistry/issues/42). Fix this by setting:
 
 ```bash
 BAZEL_PYTHON=python2.7
 ```
 
-Next create a resource config file `mllp_adapter.yaml` locally. You can use the following as a template but replace the placeholders for your use case.
+Next create a resource config file `mllp_adapter.yaml` locally. You can use the
+following as a template but replace the placeholders for your use case.
 
 ```yaml
 apiVersion: extensions/v1beta1
@@ -143,11 +174,14 @@ kubectl create -f mllp_adapter_service.yaml
 
 ## VPN
 
-*Use E2E VPN setup if want your data to be encrypted end-to-end. See [the "encryption in transit" doc](https://cloud.google.com/security/encryption-in-transit/) for more details.*
+*Use E2E VPN setup if want your data to be encrypted end-to-end. See
+[the "encryption in transit" doc](https://cloud.google.com/security/encryption-in-transit/)
+for more details.*
 
 ### Cloud VPN
 
-[Cloud VPN](https://cloud.google.com/vpn/docs/) creates a secure tunnel to ensure data is encrypted in transit.
+[Cloud VPN](https://cloud.google.com/vpn/docs/) creates a secure tunnel to
+ensure data is encrypted in transit.
 
 First create a static IP address for the VPN gateway (GATEWAY_IP):
 
@@ -179,8 +213,10 @@ gcloud --project <PROJECT_ID> compute firewall-rules create allow-mllp-over-vpn 
 
 ### E2E VPN
 
-The docker VPN image used in this section is [here on github](https://github.com/kitten/docker-strongswan). First check the configurations in the repo to see
-if you need to make any changes for your use case (you probabaly do).
+The docker VPN image used in this section is
+[here on github](https://github.com/kitten/docker-strongswan). First check the
+configurations in the repo to see if you need to make any changes for your use
+case (you probabaly do).
 
 Pull the image from docker hub and upload it to gcr.io:
 
@@ -248,11 +284,13 @@ spec:
           type: Directory
 ```
 
-Load necessary kernel modules before applying the configuration changes. Then apply the changes:
+Load necessary kernel modules before applying the configuration changes. Then
+apply the changes:
 
 ```bash
 kubectl apply -f mllp_adapter.yaml
 ```
+
 (Optional) Allocate a static IP address for the load balancer:
 
 ```bash
@@ -290,7 +328,8 @@ Apply the change as well by running `kubectl apply -f mllp_adapter_service.yaml`
 
 This will also update the firewall rules automatically.
 
-Now connect your client to the VPN server and test if you can access the adapter:
+Now connect your client to the VPN server and test if you can access the
+adapter:
 
 ```bash
 kubectl describe pods | grep IP: # Get pod IP.
