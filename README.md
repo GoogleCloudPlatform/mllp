@@ -16,8 +16,8 @@ messages via MLLP/TCP, and forwards received messages to HL7v2 API.
 
 ## Pull
 
-The prebuilt docker image is staged on Google Container Registry (GCR). You may
-pull the latest image by running:
+The prebuilt docker image is staged on Google Container Registry (GCR). It is
+strongly recommended to use the prebuilt docker images:
 
 ```bash
 docker pull gcr.io/cloud-healthcare-containers/mllp-adapter:latest
@@ -107,6 +107,13 @@ If this fails with the error message "ModuleNotFoundError: No module named
 BAZEL_PYTHON=python2.7
 ```
 
+If the push fails with "Permission denied", try running the following the
+command in the console and retry:
+
+```bash
+gcloud auth configure-docker
+```
+
 Next create a resource config file `mllp_adapter.yaml` locally. You can use the
 following as a template but replace the placeholders for your use case.
 
@@ -167,7 +174,12 @@ spec:
 Deploy to a GKE cluster:
 
 ```bash
+# To use default service account.
 gcloud container clusters create mllp-adapter --zone=<ZONE_ID> --scopes https://www.googleapis.com/auth/pubsub
+# Or to use custom service account. Read the documentation here: https://cloud.google.com/sdk/gcloud/reference/container/clusters/create
+gcloud container clusters create mllp-adapter --zone=<ZONE_ID> --service-account <SERVICE_ACCOUNT>
+
+# See the documentation here: https://kubernetes.io/docs/reference/kubectl/kubectl/
 kubectl create -f mllp_adapter.yaml
 kubectl create -f mllp_adapter_service.yaml
 ```
