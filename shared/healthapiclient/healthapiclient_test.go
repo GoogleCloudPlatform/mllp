@@ -42,6 +42,7 @@ const (
 	getPath             = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/890"
 	executeBundlePath   = "/projects/123/locations/test-central1/datasets/456/fhirStores/101"
 	createdResourceName = "projects/123/locations/test-central1/datasets/456/fhirStores/101/resources/Patient/06406a39-f4ff-43e1-8ea3-6d9f542870c8"
+	invalidErrResp      = "invalid error response"
 )
 
 var (
@@ -101,6 +102,11 @@ func setUp() *httptest.Server {
 					return
 				}
 
+				if string(msgReq.Msg.Data) == invalidErrResp {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte("{"))
+					return
+				}
 				received = append(received, msgReq.Msg.Data)
 
 				data, err := json.Marshal(&sendMessageResp{Hl7Ack: cannedAck})
@@ -250,6 +256,14 @@ func TestSendError(t *testing.T) {
 			datasetID,
 			"wronghl7v2store",
 			[][]byte{cannedMsg},
+			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
+		},
+		{
+			"invalid error response",
+			projectReference,
+			datasetID,
+			hl7V2StoreID,
+			[][]byte{[]byte(invalidErrResp)},
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
 	}

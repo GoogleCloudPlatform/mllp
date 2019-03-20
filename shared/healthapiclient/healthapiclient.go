@@ -78,6 +78,14 @@ type sendMessageResp struct {
 	Hl7Ack []byte `json:"hl7Ack"`
 }
 
+type sendMessageErrorResp struct {
+	Error struct {
+		Details []struct {
+			Hl7Nack []byte `json:"hl7Nack"`
+		} `json:"details"`
+	} `json:"error"`
+}
+
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
 func NewHL7V2Client(ctx context.Context, cred string, metrics *monitoring.Client, apiAddrPrefix, projectID, locationID, datasetID, hl7V2StoreID string) (*HL7V2Client, error) {
 	if err := validatesComponents(projectID, locationID, datasetID, hl7V2StoreID); err != nil {
@@ -168,8 +176,8 @@ func initHTTPClient(ctx context.Context, cred string, apiAddrPrefix string) (*ht
 	return httpClient, nil
 }
 
-// Send sends a message to the endpoint and returns the response.
-// Returns an error if the request fails.
+// Send sends a message to the endpoint and returns the ACK/NACK response.
+// Returns an error if the request fails without a NACK response.
 func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	c.metrics.Inc(sentMetric)
 
@@ -195,6 +203,14 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		c.metrics.Inc(sendErrorMetric)
+		nack, err := extractNACKFromErrorResponse(body)
+		if err != nil {
+			return nil, err
+		}
+		if nack != nil {
+			log.Errorf("Message was sent, received a NACK response.")
+			return nack, nil
+		}
 		return nil, fmt.Errorf("request failed: %v\n%v", resp.StatusCode, string(body))
 	}
 
@@ -206,6 +222,19 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 
 	log.Infof("Message was successfully sent.")
 	return parsedResp.Hl7Ack, nil
+}
+
+func extractNACKFromErrorResponse(resp []byte) ([]byte, error) {
+	var parsedErrorResp *sendMessageErrorResp
+	if err := json.Unmarshal(resp, &parsedErrorResp); err != nil {
+		return nil, fmt.Errorf("unable to parse error response data: %v\n%s", err, resp)
+	}
+	for _, d := range parsedErrorResp.Error.Details {
+		if len(d.Hl7Nack) > 0 {
+			return d.Hl7Nack, nil
+		}
+	}
+	return nil, nil
 }
 
 // Get retrieves a message from the server.
