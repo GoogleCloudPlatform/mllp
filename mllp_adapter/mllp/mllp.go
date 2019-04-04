@@ -79,7 +79,7 @@ func ReadMsg(reader io.Reader) ([]byte, error) {
 	// Read everything up to the endBlock byte.
 	rawMsg, err := r.ReadBytes(endBlock)
 	if err != nil {
-		return nil, fmt.Errorf("reading message: %v", err)
+		return nil, err
 	}
 	// Read one more byte for the carriage return.
 	lastByte, err := r.ReadByte()

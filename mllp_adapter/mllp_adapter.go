@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"flag"
 	
@@ -28,6 +29,7 @@ import (
 	"shared/healthapiclient"
 	"shared/monitoring"
 	"shared/pubsub"
+	"os"
 )
 
 var (
@@ -50,51 +52,66 @@ var (
 func main() {
 	flag.Parse()
 
+	if err := run(); err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+
+	select {}
+}
+
+func run() error {
 	ctx := context.Background()
 
 	var mon *monitoring.Client
 	if *exportStats {
 		mon = monitoring.NewClient()
 		if err := monitoring.ConfigureExport(ctx, mon, *credentials); err != nil {
-			log.Fatalf("monitoring.ConfigureExport: %v", err)
+			return fmt.Errorf("failed to configure monitoring: %v", err)
 		}
 		// Initial export delay is between 45 and 45+30 seconds
 		go func() {
 			err := mon.StartExport(ctx, 45, 30)
-			log.Fatalf("monitoring.Run: %v", err)
+			log.Errorf("failed to start export to monitoring service: %v", err)
+			os.Exit(1)
 		}()
 	}
 
+	if *apiAddrPrefix == "" {
+		return fmt.Errorf("required flag value --api_addr_prefix not provided")
+	}
 	apiClient, err := healthapiclient.NewHL7V2Client(ctx, *credentials, mon, *apiAddrPrefix, *hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID)
 	if err != nil {
-		log.Fatalf("healthapiclient.NewHL7V2Client: %v", err)
+		return fmt.Errorf("failed to connect to HL7v2 API: %v", err)
 	}
 
 	if *pubsubProjectID == "" || *pubsubSubscription == "" {
-		log.Infof("Pubsub receiver not specified, starting without")
+		log.Infof("pubsub receiver not specified, starting without")
 	} else {
 		sender := mllpsender.NewSender(*mllpAddr, mon)
 		handler := handler.New(mon, apiClient, sender)
 		go func() {
 			err := pubsub.Listen(ctx, *credentials, handler, *pubsubProjectID, *pubsubSubscription)
-			log.Fatalf("pubsub.Listen: %v", err)
+			log.Errorf("failed to connect to PubSub channel: %v", err)
+			os.Exit(1)
 		}()
 	}
 
 	if *receiverIP == "" {
-		log.Fatalf("Required flag value --receiver_ip not provided")
+		return fmt.Errorf("required flag value --receiver_ip not provided")
 	}
 
 	receiver, err := mllpreceiver.NewReceiver(*receiverIP, *port, apiClient, mon)
 	if err != nil {
-		log.Fatalf("NewReceiver: %v", err)
+		return fmt.Errorf("failed to start MLLP receiver: %v", err)
 	}
+
 	go func() {
-		err := receiver.Run()
-		if err != nil {
-			log.Fatalf("MLLPReceiver.Run: %v", err)
+		if err := receiver.Run(); err != nil {
+			log.Errorf("failed to start MLLP receiver: %v", err)
+			os.Exit(1)
 		}
 	}()
 
-	select {}
+	return nil
 }

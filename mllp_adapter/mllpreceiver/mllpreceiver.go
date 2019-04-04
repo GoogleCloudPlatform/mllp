@@ -56,7 +56,7 @@ func NewReceiver(ip string, port int, sender sender, mt *monitoring.Client) (*ML
 	localhost := net.JoinHostPort(ip, strconv.Itoa(port))
 	l, err := net.Listen("tcp", localhost)
 	if err != nil {
-		return nil, fmt.Errorf("Listen: %v", err)
+		return nil, err
 	}
 
 	tcpAddr, ok := l.Addr().(*net.TCPAddr)
@@ -91,7 +91,7 @@ func (m *MLLPReceiver) Run() error {
 func (m *MLLPReceiver) handleConnection(conn *net.TCPConn) {
 	defer func() {
 		if err := conn.Close(); err != nil {
-			log.Errorf("Closing connection: %v", err)
+			log.Errorf("Failed to clean up connection: %v", err)
 		}
 		if m.connClosed != nil {
 			m.connClosed <- struct{}{}
@@ -109,18 +109,18 @@ func (m *MLLPReceiver) handleConnection(conn *net.TCPConn) {
 	for {
 		msg, err := mllp.ReadMsg(conn)
 		if err != nil {
-			log.Errorf("reading message: %v", err)
+			log.Errorf("Failed to read message: %v", err)
 			return
 		}
 		m.metrics.Inc(readsMetric)
 		ack, err := m.handleMessage(msg)
 		if err != nil {
-			log.Errorf("handleMessage: %v", err)
+			log.Error(err.Error())
 			return
 		}
 		m.metrics.Inc(handleMessagesMetric)
 		if err := mllp.WriteMsg(conn, ack); err != nil {
-			log.Errorf("writing ack: %v", err)
+			log.Errorf("Failed to write ACK: %v", err)
 			return
 		}
 		m.metrics.Inc(writesMetric)
@@ -130,7 +130,7 @@ func (m *MLLPReceiver) handleConnection(conn *net.TCPConn) {
 func (m *MLLPReceiver) handleMessage(msg []byte) ([]byte, error) {
 	ack, err := m.sender.Send(msg)
 	if err != nil {
-		return nil, fmt.Errorf("Send: %v", err)
+		return nil, err
 	}
 	return ack, nil
 }
