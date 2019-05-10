@@ -41,7 +41,7 @@ const (
 	sendPath            = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages:ingest"
 	getPath             = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/890"
 	executeBundlePath   = "/projects/123/locations/test-central1/datasets/456/fhirStores/101"
-	createdResourceName = "projects/123/locations/test-central1/datasets/456/fhirStores/101/resources/Patient/06406a39-f4ff-43e1-8ea3-6d9f542870c8"
+	createdResourceName = "projects/123/locations/test-central1/datasets/456/fhirStores/101/fhir/Patient/06406a39-f4ff-43e1-8ea3-6d9f542870c8"
 	invalidErrResp      = "invalid error response"
 )
 
