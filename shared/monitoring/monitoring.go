@@ -27,14 +27,15 @@ import (
 	"shared/util"
 	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/monitoring/apiv3"
+	gax "google3/third_party/golang/gax_v2/v2/gax"
 	"google.golang.org/api/option"
 
+	metricpb "google3/google/api/metric_go_proto"
+	monitoredrespb "google3/google/api/monitored_resource_go_proto"
 	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/googleapis/gax-go"
 	tspb "github.com/golang/protobuf/ptypes"
-	metricpb "google.golang.org/genproto/googleapis/api/metric"
-	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3_alias"
 )
 
 const scope = "https://www.googleapis.com/auth/monitoring.write"
