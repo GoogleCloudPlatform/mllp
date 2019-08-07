@@ -19,13 +19,12 @@ import (
 	"testing"
 	"time"
 
-	metricpb "google3/google/api/metric_go_proto"
-	monitoredrespb "google3/google/api/monitored_resource_go_proto"
+	metricpb "google.golang.org/genproto/googleapis/api/metric"
+	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
 	tspb "github.com/golang/protobuf/ptypes"
-	gax "google3/third_party/golang/gax_v2/v2/gax"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3_alias"
+	gax "github.com/googleapis/gax-go"
+	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"github.com/kylelemons/godebug/pretty"
-	"github.com/googleapis/gax-go"
 )
 
 type fakeClient struct {
