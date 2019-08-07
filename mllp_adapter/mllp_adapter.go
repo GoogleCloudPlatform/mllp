@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"flag"
 	
@@ -29,14 +30,13 @@ import (
 	"shared/healthapiclient"
 	"shared/monitoring"
 	"shared/pubsub"
-	"os"
 )
 
 var (
 	// 2575 is the default port for HL7 over TCP
 	// https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=2575
 	port               = flag.Int("port", 2575, "Port on which to listen for incoming MLLP connections")
-	apiAddrPrefix      = flag.String("api_addr_prefix", "", "Prefix of the Cloud Healthcare API, including scheme and version")
+	apiAddrPrefix      = flag.String("api_addr_prefix", "healthcare.googleapis.com/v1beta1", "Prefix of the Cloud Healthcare API, including scheme and version")
 	mllpAddr           = flag.String("mllp_addr", "", "Target address for outgoing MLLP connections")
 	receiverIP         = flag.String("receiver_ip", "", "IP address for incoming MLLP connections")
 	pubsubProjectID    = flag.String("pubsub_project_id", "", "Project ID that owns the pubsub topic")
