@@ -72,7 +72,7 @@ func run() error {
 		// Initial export delay is between 45 and 45+30 seconds
 		go func() {
 			err := mon.StartExport(ctx, 45, 30)
-			log.Errorf("failed to start export to monitoring service: %v", err)
+			log.Errorf("MLLP Adapter: failed to start export to monitoring service: %v", err)
 			os.Exit(1)
 		}()
 	}
@@ -92,7 +92,7 @@ func run() error {
 		handler := handler.New(mon, apiClient, sender)
 		go func() {
 			err := pubsub.Listen(ctx, *credentials, handler, *pubsubProjectID, *pubsubSubscription)
-			log.Errorf("failed to connect to PubSub channel: %v", err)
+			log.Errorf("MLLP Adapter: failed to connect to PubSub channel: %v", err)
 			os.Exit(1)
 		}()
 	}
@@ -103,12 +103,12 @@ func run() error {
 
 	receiver, err := mllpreceiver.NewReceiver(*receiverIP, *port, apiClient, mon)
 	if err != nil {
-		return fmt.Errorf("failed to start MLLP receiver: %v", err)
+		return fmt.Errorf("failed to create MLLP receiver: %v", err)
 	}
 
 	go func() {
 		if err := receiver.Run(); err != nil {
-			log.Errorf("failed to start MLLP receiver: %v", err)
+			log.Errorf("MLLP Adapter: failed to start MLLP receiver: %v", err)
 			os.Exit(1)
 		}
 	}()

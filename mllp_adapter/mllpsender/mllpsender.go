@@ -50,21 +50,16 @@ func NewSender(addr string, metrics *monitoring.Client) *MLLPSender {
 func (m *MLLPSender) Send(msg []byte) ([]byte, error) {
 	m.metrics.Inc(sentMetric)
 
-	log.Infof("Dialing MLLP connection")
-
 	conn, err := net.Dial("tcp", m.addr)
 	if err != nil {
 		m.metrics.Inc(dialErrorMetric)
 		return nil, fmt.Errorf("dialing: %v", err)
 	}
 	defer func() {
-		log.Infof("Closing MLLP connection")
 		if err := conn.Close(); err != nil {
-			log.Errorf("Closing connection: %v", err)
+			log.Errorf("MLLP Sender: failed to clean up connection: %v", err)
 		}
 	}()
-
-	log.Infof("Sending MLLP message")
 
 	if err := mllp.WriteMsg(conn, msg); err != nil {
 		m.metrics.Inc(sendErrorMetric)
@@ -73,8 +68,7 @@ func (m *MLLPSender) Send(msg []byte) ([]byte, error) {
 	ack, err := mllp.ReadMsg(conn)
 	if err != nil {
 		m.metrics.Inc(ackErrorMetric)
-		return nil, fmt.Errorf("reading ack: %v", err)
+		return nil, fmt.Errorf("reading ACK: %v", err)
 	}
-	log.Infof("Received MLLP ack")
 	return ack, nil
 }

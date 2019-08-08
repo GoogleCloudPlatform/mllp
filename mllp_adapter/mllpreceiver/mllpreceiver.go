@@ -17,6 +17,7 @@ package mllpreceiver
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"time"
@@ -56,7 +57,7 @@ func NewReceiver(ip string, port int, sender sender, mt *monitoring.Client) (*ML
 	localhost := net.JoinHostPort(ip, strconv.Itoa(port))
 	l, err := net.Listen("tcp", localhost)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listening to port: %v", err)
 	}
 
 	tcpAddr, ok := l.Addr().(*net.TCPAddr)
@@ -74,13 +75,13 @@ func NewReceiver(ip string, port int, sender sender, mt *monitoring.Client) (*ML
 func (m *MLLPReceiver) Run() error {
 	defer func() {
 		if err := m.listener.Close(); err != nil {
-			log.Errorf("Closing listener: %v", err)
+			log.Errorf("MLLP Receiver: closing listener: %v", err)
 		}
 	}()
 	for {
 		conn, err := m.listener.(*net.TCPListener).AcceptTCP()
 		if err != nil {
-			return fmt.Errorf("AcceptTCP: %v", err)
+			return fmt.Errorf("acceptTCP: %v", err)
 		}
 		m.metrics.Inc(reconnectsMetric)
 		go m.handleConnection(conn)
@@ -89,14 +90,7 @@ func (m *MLLPReceiver) Run() error {
 
 // handleConnection handles a single TCP connection.
 func (m *MLLPReceiver) handleConnection(conn *net.TCPConn) {
-	defer func() {
-		if err := conn.Close(); err != nil {
-			log.Errorf("Failed to clean up connection: %v", err)
-		}
-		if m.connClosed != nil {
-			m.connClosed <- struct{}{}
-		}
-	}()
+
 	// Cloud VPC resets connections that are idle for 10 minutes (see
 	// https://cloud.google.com/compute/docs/networks-and-firewalls), so we
 	// send a keep alive message every 3 minutes to keep that from
@@ -104,23 +98,32 @@ func (m *MLLPReceiver) handleConnection(conn *net.TCPConn) {
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(3 * time.Minute)
 
-	log.Infof("Accepted connection from %v", conn.RemoteAddr())
-	defer log.Infof("Closed connection from %v", conn.RemoteAddr())
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Errorf("MLLP Receiver: failed to clean up connection: %v", err)
+		}
+		if m.connClosed != nil {
+			m.connClosed <- struct{}{}
+		}
+	}()
+
 	for {
 		msg, err := mllp.ReadMsg(conn)
 		if err != nil {
-			log.Errorf("Failed to read message: %v", err)
+			if err != io.EOF {
+				log.Errorf("MLLP Receiver: failed to read message: %v", err)
+			}
 			return
 		}
 		m.metrics.Inc(readsMetric)
 		ack, err := m.handleMessage(msg)
 		if err != nil {
-			log.Error(err.Error())
+			log.Errorf("MLLP Receiver: failed to handle message: %v", err.Error())
 			return
 		}
 		m.metrics.Inc(handleMessagesMetric)
 		if err := mllp.WriteMsg(conn, ack); err != nil {
-			log.Errorf("Failed to write ACK: %v", err)
+			log.Errorf("MLLP Receiver: failed to write ACK: %v", err)
 			return
 		}
 		m.metrics.Inc(writesMetric)

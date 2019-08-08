@@ -83,7 +83,5 @@ func (h *Handler) Handle(m pubsub.Message) {
 		return
 	}
 
-	log.Infof("Sent message %v", msgName)
-
 	m.Ack()
 }
