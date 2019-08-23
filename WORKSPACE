@@ -37,31 +37,31 @@ gazelle_dependencies()
 
 go_repository(
     name = "io_opencensus_go",
-    commit = "57c09932883846047fd542903575671cb6b75070",
+    commit = "b4a14686f0a98096416fe1b4cb848e384fb2b22b",
     importpath = "go.opencensus.io",
 )
 
 go_repository(
     name = "org_golang_google_grpc",
-    commit = "a718efe0f40854b1f8bf60c04bfc9f8e8f6296db",
+    commit = "24a4d6eb88bfde69ca4ef12fa00aef31059f74ec",
     importpath = "google.golang.org/grpc",
 )
 
 go_repository(
     name = "org_golang_google_api",
-    commit = "77d02fa16783d31ba92e59fc0a888a45635f433e",
+    commit = "954df90885a21cbb22088134ab537facda86943c",
     importpath = "google.golang.org/api",
 )
 
 go_repository(
     name = "org_golang_google_genproto",
-    commit = "8819c946db4494a2259bf100a377f51aa585d893",
+    commit = "fa694d86fc64c7654a660f8908de4e879866748d",
     importpath = "google.golang.org/genproto",
 )
 
 go_repository(
     name = "com_github_googleapis_gax_go",
-    commit = "ddfab93c3faef4935403ac75a7c11f0e731dc181",
+    commit = "bd5b16380fd03dc758d11cef74ba2e3bc8b0e8c2",
     importpath = "github.com/googleapis/gax-go",
 )
 
@@ -73,31 +73,31 @@ go_repository(
 
 go_repository(
     name = "org_golang_x_oauth2",
-    commit = "3e8b2be1363542a95c52ea0796d4a40dacfb5b95",
+    commit = "0f29369cfe4552d0e4bcddc57cc75f4d7e672a33",
     importpath = "golang.org/x/oauth2",
 )
 
 go_repository(
     name = "org_golang_x_sync",
-    commit = "37e7f081c4d4c64e13b10787722085407fe5d15f",
+    commit = "112230192c580c3556b8cee6403af37a4fc5f28c",
     importpath = "golang.org/x/sync",
 )
 
 go_repository(
     name = "org_golang_x_net",
-    commit = "65e2d4e15006aab9813ff8769e768bbf4bb667a0",
+    commit = "74dc4d7220e7acc4e100824340f3e66577424772",
     importpath = "golang.org/x/net",
 )
 
 go_repository(
     name = "com_github_kylelemons_godebug",
-    commit = "d65d576e9348f5982d7f6d83682b694e731a45c6",
+    commit = "a435ca668a924cbe28b15c21c2f9d46ed72e6783",
     importpath = "github.com/kylelemons/godebug",
 )
 
 go_repository(
     name = "com_github_hashicorp_golang_lru",
-    commit = "20f1fb78b0740ba8c3cb143a61e86ba5c8669768",
+    commit = "7f827b33c0f158ec5dfbba01bb0b14a4541fd81d",
     importpath = "github.com/hashicorp/golang-lru",
 )
 

@@ -1,0 +1,14 @@
+# Load balancer for the MLLP adapter.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mllp-adapter-presubmit-service
+spec:
+  ports:
+  - port: 2575
+    targetPort: 2575
+    protocol: TCP
+    name: port
+  selector:
+    app: mllp-adapter-presubmit
+  type: LoadBalancer

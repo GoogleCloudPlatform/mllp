@@ -1,0 +1,157 @@
+# Copyright 2019 Google LLC.  All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+steps:
+- id: 'Create cluster'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    # capture the cluster name to be created
+    # (it will be used again for the deletion)
+    echo "test-$(date +%s)" > _cluster-name
+    gcloud container clusters create $(cat _cluster-name) \
+    --zone=us-central1-b \
+    --scopes https://www.googleapis.com/auth/cloud-healthcare,\
+    https://www.googleapis.com/auth/pubsub,\
+    https://www.googleapis.com/auth/devstorage.read_only
+
+- id: 'Patch config'
+  name: 'ubuntu'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    find config -type f | xargs sed -i "s/PROJECT_ID/$PROJECT_ID/g"
+    find config -type f | xargs sed -i "s/DATASET_ID/dataset-$BUILD_ID/g"
+    find config -type f | xargs sed -i "s/HL7_STORE_ID/store-$BUILD_ID/g"
+    find config -type f | xargs sed -i "s/FAKE_HOSPITAL_STORE_ID/hospital-$BUILD_ID/g"
+    find config -type f | xargs sed -i "s/PUBSUB_SUB_ID/sub-$BUILD_ID/g"
+  waitFor: ['-']
+
+- id: 'Build all'
+  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  args: ['build', '--spawn_strategy=standalone', '//mllp_adapter/...']
+  waitFor: ['-']
+
+- id: 'Unit tests'
+  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  args: ['test', '--spawn_strategy=standalone', '--test_output=all', '//mllp_adapter/...']
+  waitFor: ['Build all']
+
+- id: 'Build docker image'
+  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  args: ['run', '--spawn_strategy=standalone', '//mllp_adapter:mllp_adapter_docker']
+  waitFor: ['Unit tests']
+
+- id: 'Tag image'
+  name: gcr.io/cloud-builders/docker
+  args: ['tag', 'bazel/mllp_adapter:mllp_adapter_docker', 'gcr.io/$PROJECT_ID/mllp_adapter:presubmit']
+  waitFor: ['Build docker image']
+
+- id: 'Push image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/mllp_adapter:presubmit']
+  waitFor: ['Tag image']
+
+- id: 'Create pubsub topic/subscription'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    gcloud pubsub topics create topic-$BUILD_ID && \
+    gcloud pubsub subscriptions create --topic topic-$BUILD_ID sub-$BUILD_ID
+  waitFor: ['Push image']
+
+- id: 'GKE deploy'
+  name: 'gcr.io/cloud-builders/gke-deploy:stable'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    /gke-deploy run --filename=config --cluster=$(cat _cluster-name) --location=us-central1-b
+  waitFor: ['Create pubsub topic/subscription', 'Create cluster']
+
+- id: 'Get endpoint'
+  name: 'gcr.io/cloud-builders/kubectl'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    # grab the public IP of the load balancer
+    get_ip() {
+      kubectl get service mllp-adapter-presubmit-service -o=jsonpath='{.status.loadBalancer.ingress[0].ip}'
+    }
+    echo "querying for load balancer ip"
+    echo $(get_ip) > _mllp_adapter_ip # save ip for use in next step
+
+- id: 'Integration tests'
+  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    bazel test --spawn_strategy=standalone --test_output=all //mllp_adapter:integration_test \
+    --test_arg=--hl7_v2_project_id=$PROJECT_ID \
+    --test_arg=--hl7_v2_dataset_id=dataset-$BUILD_ID \
+    --test_arg=--hl7_v2_store_id=store-$BUILD_ID \
+    --test_arg=--pubsub_topic=topic-$BUILD_ID \
+    --test_arg=--mllp_adapter_addr=$(cat _mllp_adapter_ip):2575 \
+    --test_arg=--fake_hospital_store_id=hospital-$BUILD_ID \
+    || echo "Integration tests faild, please check integration tests logs." >> _failures
+
+- id: 'Clean up GKE deployment'
+  name: 'gcr.io/cloud-builders/kubectl'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    export CLOUDSDK_CONTAINER_CLUSTER=$(cat _cluster-name)
+    /builder/kubectl.bash delete --filename=config
+  env:
+  - 'CLOUDSDK_COMPUTE_ZONE=us-central1-b'
+  waitFor: ['Integration tests']
+
+- id: 'Delete cluster'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    gcloud container clusters delete $(cat _cluster-name) --quiet --zone=us-central1-b
+  waitFor: ['Clean up GKE deployment']
+
+- id: 'Clean up pubsub topic/subscription'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    gcloud pubsub subscriptions delete sub-$BUILD_ID && \
+    gcloud pubsub topics delete topic-$BUILD_ID
+  waitFor: ['Integration tests']
+
+- id: 'Report test failures'
+  name: 'ubuntu'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      if [ -f "_failures" ]; then
+        cat _failures
+        exit 1
+      fi
+images: ['gcr.io/$PROJECT_ID/mllp_adapter:presubmit']
+timeout: 3600s

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
 go_binary(
     name = "mllp_adapter",
@@ -46,4 +46,16 @@ docker_push(
     # Placeholder project and image names, please replace with yours.
     repository = "my-project/my-image",
     tag = "latest",
+)
+
+go_test(
+    name = "integration_test",
+    size = "small",
+    srcs = ["integration_test.go"],
+    tags = ["manual"],
+    deps = [
+        "//mllp_adapter/mllp:go_default_library",
+        "@com_github_golang_glog//:go_default_library",
+        "@org_golang_google_api//healthcare/v1beta1:go_default_library",
+    ],
 )

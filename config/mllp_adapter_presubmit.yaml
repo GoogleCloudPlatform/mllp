@@ -1,0 +1,49 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mllp-adapter-presubmit-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mllp-adapter-presubmit
+    spec:
+      containers:
+        - name: mllp-adapter-presubmit
+          imagePullPolicy: Always
+          image: 'gcr.io/PROJECT_ID/mllp_adapter:presubmit'
+          ports:
+            - containerPort: 2575
+              protocol: TCP
+              name: "port"
+          command:
+            - "/usr/mllp_adapter/mllp_adapter"
+            - "--hl7_v2_project_id=PROJECT_ID"
+            - "--hl7_v2_location_id=us-central1"
+            - "--hl7_v2_dataset_id=DATASET_ID"
+            - "--hl7_v2_store_id=HL7_STORE_ID"
+            - "--pubsub_project_id=PROJECT_ID"
+            - "--pubsub_subscription=PUBSUB_SUB_ID"
+            - "--api_addr_prefix=https://healthcare.googleapis.com:443/v1beta1"
+            - "--logtostderr"
+            - "--receiver_ip=0.0.0.0"
+            - "--mllp_addr=0.0.0.0:2576"
+
+        - name: fake-hospital-presubmit
+          imagePullPolicy: Always
+          image: 'gcr.io/PROJECT_ID/mllp_adapter:presubmit'
+          ports:
+            - containerPort: 2576
+              protocol: TCP
+              name: "port"
+          command:
+            - "/usr/mllp_adapter/mllp_adapter"
+            - "--hl7_v2_project_id=PROJECT_ID"
+            - "--hl7_v2_location_id=us-central1"
+            - "--hl7_v2_dataset_id=DATASET_ID"
+            - "--hl7_v2_store_id=FAKE_HOSPITAL_STORE_ID"
+            - "--api_addr_prefix=https://healthcare.googleapis.com:443/v1beta1"
+            - "--logtostderr"
+            - "--receiver_ip=0.0.0.0"
+            - "--port=2576"
