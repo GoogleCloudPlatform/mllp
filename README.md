@@ -14,7 +14,7 @@ messages via MLLP/TCP, and forwards received messages to HL7v2 API.
     [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) command
     line tools.
 
-## Pull
+## Initial Pull
 
 The prebuilt docker image is staged on Google Container Registry (GCR). It is
 strongly recommended to use the prebuilt docker images:
@@ -22,6 +22,10 @@ strongly recommended to use the prebuilt docker images:
 ```bash
 docker pull gcr.io/cloud-healthcare-containers/mllp-adapter:latest
 ```
+
+Note that the 'latest' image tag is convenient for development and testing, but
+production deployments should use a stable image tag to ensure that a new image
+isn't unintentionally deployed whenever the mllp-adapter image is updated.
 
 ## Build (Optional)
 
@@ -118,6 +122,24 @@ gcloud auth configure-docker
 
 Next create a resource config file `mllp_adapter.yaml` locally. You can use the
 following as a template but replace the placeholders for your use case.
+
+Note that the <IMAGE_LABEL> should be a stable image tag that identifies the
+version of mllp-adapter image you want deployed. Do not use the 'latest' image
+tag, as this points to a new image each time there is an update.
+
+You can retrieve the list of mllp-adapter image tags using the following
+command:
+
+```bash
+gcloud container images list-tags gcr.io/cloud-healthcare-containers/mllp-adapter
+
+DIGEST        TAGS         TIMESTAMP
+edea3487df8a               1969-12-31T19:00:00
+231b073df13d  blue,latest  1969-12-31T19:00:00
+```
+
+In the above example, the image tag 'blue' will be the stable image tag for the
+latest mllp-adapter image at the time of execution.
 
 ```yaml
 apiVersion: extensions/v1beta1
