@@ -1,0 +1,55 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mllp-adapter-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mllp-adapter
+    spec:
+      containers:
+        - name: mllp-adapter
+          imagePullPolicy: Always
+          image: gcr.io/cloud-healthcare-containers/mllp-adapter:<IMAGE_LABEL>
+          ports:
+            - containerPort: 2575
+              protocol: TCP
+              name: "port"
+          command:
+            - "/usr/mllp_adapter/mllp_adapter"
+            - "--port=2575"
+            - "--hl7_v2_project_id=<PROJECT_ID>"
+            - "--hl7_v2_location_id=<LOCATION_ID>"
+            - "--hl7_v2_dataset_id=<DATASET_ID>"
+            - "--hl7_v2_store_id=<STORE_ID>"
+            - "--api_addr_prefix=https://healthcare.googleapis.com/v1beta1"
+            - "--logtostderr"
+            - "--receiver_ip=<RECEIVER_IP>"
+            - "--pubsub_project_id=<PUBSUB_PROJECT_ID>"
+            - "--pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID>"
+        - name: vpn-server
+          securityContext:
+            privileged: true
+          imagePullPolicy: Always
+          image: gcr.io/<GCR_PROJECT_ID>/<IMAGE_NAME>:<IMAGE_LABEL>
+          ports:
+            - name: "ike"
+              containerPort: 500
+              protocol: UDP
+            - name: "natt"
+              containerPort: 4500
+              protocol: UDP
+            - name: "port"
+              containerPort: 1701
+              protocol: UDP
+          volumeMounts:
+            - name: modules
+              mountPath: /lib/modules
+              readOnly: true
+      volumes:
+      - name: modules
+        hostPath:
+          path: /lib/modules
+          type: Directory

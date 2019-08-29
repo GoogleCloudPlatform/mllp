@@ -120,8 +120,8 @@ command in the console and retry:
 gcloud auth configure-docker
 ```
 
-Next create a resource config file `mllp_adapter.yaml` locally. You can use the
-following as a template but replace the placeholders for your use case.
+Next replace the placeholders in the
+[deployment config](config/mllp_adapter.yaml) for your use case.
 
 Note that the <IMAGE_LABEL> should be a stable image tag that identifies the
 version of mllp-adapter image you want deployed. Do not use the 'latest' image
@@ -141,60 +141,6 @@ edea3487df8a               1969-12-31T19:00:00
 In the above example, the image tag 'blue' will be the stable image tag for the
 latest mllp-adapter image at the time of execution.
 
-```yaml
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: mllp-adapter-deployment
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: mllp-adapter
-    spec:
-      containers:
-        - name: mllp-adapter
-          imagePullPolicy: Always
-          image: gcr.io/<GCR_PROJECT_ID>/<IMAGE_NAME>:<IMAGE_LABEL>
-          ports:
-            - containerPort: 2575
-              protocol: TCP
-              name: "port"
-          command:
-            - "/usr/mllp_adapter/mllp_adapter"
-            - "--port=2575"
-            - "--hl7_v2_project_id=<PROJECT_ID>"
-            - "--hl7_v2_location_id=<LOCATION_ID>"
-            - "--hl7_v2_dataset_id=<DATASET_ID>"
-            - "--hl7_v2_store_id=<STORE_ID>"
-            - "--api_addr_prefix=<API_ADDR_PREFIX>"
-            - "--logtostderr"
-            - "--receiver_ip=<RECEIVER_IP>"
-            - "--pubsub_project_id=<PUBSUB_PROJECT_ID>"
-            - "--pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID>"
-```
-
-In addition we need a service `mllp_adapter_service.yaml` to do load balancing:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: mllp-adapter-service
-  annotations:
-    cloud.google.com/load-balancer-type: "Internal"
-spec:
-  ports:
-  - port: 2575
-    targetPort: 2575
-    protocol: TCP
-    name: port
-  selector:
-    app: mllp-adapter
-  type: LoadBalancer
-```
-
 Deploy to a GKE cluster:
 
 ```bash
@@ -204,8 +150,8 @@ gcloud container clusters create mllp-adapter --zone=<ZONE_ID> --scopes https://
 gcloud container clusters create mllp-adapter --zone=<ZONE_ID> --service-account <SERVICE_ACCOUNT>
 
 # See the documentation here: https://kubernetes.io/docs/reference/kubectl/kubectl/
-kubectl create -f mllp_adapter.yaml
-kubectl create -f mllp_adapter_service.yaml
+kubectl create -f config/mllp_adapter.yaml
+kubectl create -f config/mllp_adapter_service.yaml
 ```
 
 ## VPN
@@ -263,68 +209,14 @@ docker tag philplckthun/strongswan:latest gcr.io/<GCR_PROJECT_ID>/<IMAGE_NAME>:<
 gcloud docker -- push gcr.io/<GCR_PROJECT_ID>/<IMAGE_NAME>:<IMAGE_LABEL>
 ```
 
-Update the resource file to add VPN as a container in the same pod:
-
-```yaml
-name: mllp-adapter-deployment
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: mllp-adapter
-    spec:
-      containers:
-        - name: mllp-adapter
-          imagePullPolicy: Always
-          image: gcr.io/<GCR_PROJECT_ID>/<IMAGE_NAME>:<IMAGE_LABEL>
-          ports:
-            - containerPort: 2575
-              protocol: TCP
-              name: "port"
-          command:
-            - "/usr/mllp_adapter/mllp_adapter"
-            - "--port=2575"
-            - "--hl7_v2_project_id=<PROJECT_ID>"
-            - "--hl7_v2_location_id=<LOCATION_ID>"
-            - "--hl7_v2_dataset_id=<DATASET_ID>"
-            - "--hl7_v2_store_id=<STORE_ID>"
-            - "--api_addr_prefix=<API_ADDR_PREFIX>"
-            - "--logtostderr"
-            - "--receiver_ip=<RECEIVER_IP>"
-            - "--pubsub_project_id=<PUBSUB_PROJECT_ID>"
-            - "--pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID>"
-        - name: vpn-server
-          securityContext:
-            privileged: true
-          imagePullPolicy: Always
-          image: gcr.io/<GCR_PROJECT_ID>/<IMAGE_NAME>:<IMAGE_LABEL>
-          ports:
-            - name: "ike"
-              containerPort: 500
-              protocol: UDP
-            - name: "natt"
-              containerPort: 4500
-              protocol: UDP
-            - name: "port"
-              containerPort: 1701
-              protocol: UDP
-          volumeMounts:
-            - name: modules
-              mountPath: /lib/modules
-              readOnly: true
-      volumes:
-      - name: modules
-        hostPath:
-          path: /lib/modules
-          type: Directory
-```
+Replace the placeholders in the
+[deployment config](config/mllp_adapter_e2e.yaml).
 
 Load necessary kernel modules before applying the configuration changes. Then
 apply the changes:
 
 ```bash
-kubectl apply -f mllp_adapter.yaml
+kubectl apply -f config/mllp_adapter_e2e.yaml
 ```
 
 (Optional) Allocate a static IP address for the load balancer:
@@ -333,34 +225,11 @@ kubectl apply -f mllp_adapter.yaml
 gcloud --project <PROJECT_ID> compute addresses create vpn-load-balancer --region=us-central1
 ```
 
-Update the service config to expose it as an external load balancer:
+Update the [service config](config/mllp_adapter_service_e2e.yaml) to expose it
+as an external load balancer.
 
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: mllp-adapter-service
-spec:
-  ports:
-  - port: 500
-    targetPort: 500
-    protocol: UDP
-    name: ike
-  - port: 4500
-    targetPort: 4500
-    protocol: UDP
-    name: natt
-  - port: 1701
-    targetPort: 1701
-    protocol: UDP
-    name: port
-  loadBalancerIP: <LOAD_BALANCER_IP>
-  selector:
-    app: mllp-adapter
-  type: LoadBalancer
-```
-
-Apply the change as well by running `kubectl apply -f mllp_adapter_service.yaml`
+Apply the change as well by running `kubectl apply -f
+config/mllp_adapter_service_e2e.yaml`
 
 This will also update the firewall rules automatically.
 

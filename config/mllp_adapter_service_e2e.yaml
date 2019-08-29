@@ -1,0 +1,23 @@
+# Load balancer for the MLLP adapter.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mllp-adapter-service
+spec:
+  ports:
+  - port: 500
+    targetPort: 500
+    protocol: UDP
+    name: ike
+  - port: 4500
+    targetPort: 4500
+    protocol: UDP
+    name: natt
+  - port: 1701
+    targetPort: 1701
+    protocol: UDP
+    name: port
+  loadBalancerIP: <LOAD_BALANCER_IP>
+  selector:
+    app: mllp-adapter
+  type: LoadBalancer

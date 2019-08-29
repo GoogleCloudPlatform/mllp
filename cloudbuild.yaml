@@ -33,11 +33,11 @@ steps:
   args:
   - '-c'
   - |
-    find config -type f | xargs sed -i "s/PROJECT_ID/$PROJECT_ID/g"
-    find config -type f | xargs sed -i "s/DATASET_ID/dataset-$BUILD_ID/g"
-    find config -type f | xargs sed -i "s/HL7_STORE_ID/store-$BUILD_ID/g"
-    find config -type f | xargs sed -i "s/FAKE_HOSPITAL_STORE_ID/hospital-$BUILD_ID/g"
-    find config -type f | xargs sed -i "s/PUBSUB_SUB_ID/sub-$BUILD_ID/g"
+    find config/presubmit -type f | xargs sed -i "s/PROJECT_ID/$PROJECT_ID/g"
+    find config/presubmit -type f | xargs sed -i "s/DATASET_ID/dataset-$BUILD_ID/g"
+    find config/presubmit -type f | xargs sed -i "s/HL7_STORE_ID/store-$BUILD_ID/g"
+    find config/presubmit -type f | xargs sed -i "s/FAKE_HOSPITAL_STORE_ID/hospital-$BUILD_ID/g"
+    find config/presubmit -type f | xargs sed -i "s/PUBSUB_SUB_ID/sub-$BUILD_ID/g"
   waitFor: ['-']
 
 - id: 'Build all'
@@ -81,7 +81,7 @@ steps:
   args:
   - '-c'
   - |
-    /gke-deploy run --filename=config --cluster=$(cat _cluster-name) --location=us-central1-b
+    /gke-deploy run --filename=config/presubmit --cluster=$(cat _cluster-name) --location=us-central1-b
   waitFor: ['Create pubsub topic/subscription', 'Create cluster']
 
 - id: 'Get endpoint'
@@ -119,7 +119,7 @@ steps:
   - '-c'
   - |
     export CLOUDSDK_CONTAINER_CLUSTER=$(cat _cluster-name)
-    /builder/kubectl.bash delete --filename=config
+    /builder/kubectl.bash delete --filename=config/presubmit
   env:
   - 'CLOUDSDK_COMPUTE_ZONE=us-central1-b'
   waitFor: ['Integration tests']

@@ -1,0 +1,16 @@
+# Load balancer for the MLLP adapter.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mllp-adapter-service
+  annotations:
+    cloud.google.com/load-balancer-type: "Internal"
+spec:
+  ports:
+  - port: 2575
+    targetPort: 2575
+    protocol: TCP
+    name: port
+  selector:
+    app: mllp-adapter
+  type: LoadBalancer
