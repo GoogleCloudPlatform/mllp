@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"shared/util"
-	"google3/third_party/golang/cloud/pubsub_alpha/pubsub"
+	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
 )
 
