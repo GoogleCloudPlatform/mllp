@@ -91,7 +91,7 @@ func run() error {
 		sender := mllpsender.NewSender(*mllpAddr, mon)
 		handler := handler.New(mon, apiClient, sender)
 		go func() {
-			err := pubsub.Listen(ctx, *credentials, handler, *pubsubProjectID, *pubsubSubscription)
+			err := pubsub.Listen(ctx, *credentials, handler.Handle, *pubsubProjectID, *pubsubSubscription)
 			log.Errorf("MLLP Adapter: failed to connect to PubSub channel: %v", err)
 			os.Exit(1)
 		}()
