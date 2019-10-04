@@ -24,11 +24,11 @@ import (
 	"time"
 
 	log "github.com/golang/glog"
-	"shared/util"
 	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/monitoring/apiv3"
 	gax "github.com/googleapis/gax-go"
 	"google.golang.org/api/option"
+	"shared/util"
 
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"

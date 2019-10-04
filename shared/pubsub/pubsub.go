@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"shared/util"
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
+	"shared/util"
 )
 
 const (
