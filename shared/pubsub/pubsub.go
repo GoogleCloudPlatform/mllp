@@ -65,12 +65,19 @@ type MessageHandler interface {
 // Listen listens for notifications from a pubsub subscription, uses the ids
 // in the messages to fetch content with the HL7v2 API, then sends the message
 // to the partner over MLLP.
-func Listen(ctx context.Context, cred string, h MessageHandler, projectID string, topic string) error {
+func Listen(ctx context.Context, cred string, h MessageHandler, projectID string, topic string, opts ...option.ClientOption) error {
 	ts, err := util.TokenSource(ctx, cred, scope)
 	if err != nil {
 		return fmt.Errorf("getting default token source: %v", err)
 	}
-	client, err := pubsub.NewClient(ctx, projectID, option.WithTokenSource(ts))
+	fullOpts := []option.ClientOption{option.WithTokenSource(ts)}
+	fullOpts = append(fullOpts, opts...)
+	return listen(ctx, h, projectID, topic, fullOpts...)
+}
+
+// listen omits the TokenSource code for test purposes.
+func listen(ctx context.Context, h MessageHandler, projectID string, topic string, opts ...option.ClientOption) error {
+	client, err := pubsub.NewClient(ctx, projectID, opts...)
 	if err != nil {
 		return fmt.Errorf("creating pubsub client: %v", err)
 	}
