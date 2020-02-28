@@ -277,7 +277,7 @@ func (c *HL7V2Client) Get(msgName string) ([]byte, error) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		c.metrics.Inc(fetchErrorMetric)
-		return nil, fmt.Errorf("failed to fetch message: status code: %v, response: %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("failed to fetch message: status code: %v, response:\n%s", resp.StatusCode, body)
 	}
 	var msg *message
 	if err := json.Unmarshal(body, &msg); err != nil {
