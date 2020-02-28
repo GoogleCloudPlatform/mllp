@@ -265,19 +265,23 @@ func (c *HL7V2Client) Get(msgName string) ([]byte, error) {
 
 	log.Infof("Started to fetch message.")
 	resp, err := c.client.Get(fmt.Sprintf("%v/%v", c.apiAddrPrefix, msgName))
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		c.metrics.Inc(fetchErrorMetric)
 		return nil, fmt.Errorf("failed to fetch message: %v", err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		c.metrics.Inc(sendErrorMetric)
+		c.metrics.Inc(fetchErrorMetric)
 		return nil, fmt.Errorf("unable to read data from response: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		c.metrics.Inc(fetchErrorMetric)
+		return nil, fmt.Errorf("failed to fetch message: status code: %v, response: %s", resp.StatusCode, body)
 	}
 	var msg *message
 	if err := json.Unmarshal(body, &msg); err != nil {
-		c.metrics.Inc(sendErrorMetric)
+		c.metrics.Inc(fetchErrorMetric)
 		return nil, fmt.Errorf("unable to parse data: %v", err)
 	}
 	log.Infof("Message was successfully fetched.")
