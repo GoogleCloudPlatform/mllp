@@ -21,10 +21,10 @@ import (
 
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
-	tspb "github.com/golang/protobuf/ptypes"
 	gax "github.com/googleapis/gax-go"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"github.com/kylelemons/godebug/pretty"
+	tspb "github.com/golang/protobuf/ptypes"
 )
 
 type fakeClient struct {

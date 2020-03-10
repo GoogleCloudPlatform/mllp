@@ -33,8 +33,8 @@ import (
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
 	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
-	tspb "github.com/golang/protobuf/ptypes"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
+	tspb "github.com/golang/protobuf/ptypes"
 )
 
 const scope = "https://www.googleapis.com/auth/monitoring.write"
