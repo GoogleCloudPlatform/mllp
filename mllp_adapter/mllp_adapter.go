@@ -86,7 +86,7 @@ func run() error {
 	}
 
 	if *pubsubProjectID == "" || *pubsubSubscription == "" {
-		log.Infof("pubsub receiver not specified, starting without")
+		log.Infof("Either --pubsub_project_id or --pubsub_subscription is not provided, notifications of the new messages are not read and no outgoing messages will be sent to the target MLLP address.")
 	} else {
 		sender := mllpsender.NewSender(*mllpAddr, mon)
 		handler := handler.New(mon, apiClient, sender)
