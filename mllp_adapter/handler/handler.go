@@ -42,8 +42,8 @@ type Sender interface {
 // Handler represents a message handler.
 type Handler struct {
 	metrics *monitoring.Client
-	f       Fetcher
-	s       Sender
+	fetcher Fetcher
+	sender  Sender
 }
 
 // New creates a new message handler.
@@ -55,8 +55,8 @@ func New(m *monitoring.Client, f Fetcher, s Sender) *Handler {
 
 	return &Handler{
 		metrics: m,
-		f:       f,
-		s:       s,
+		fetcher: f,
+		sender:  s,
 	}
 }
 
@@ -65,22 +65,23 @@ func (h *Handler) Handle(m pubsub.Message) {
 	h.metrics.Inc(processedMetric)
 
 	// Ignore messages that are not meant to be published.
-	if m.Attrs()["publish"] != "true" {
+	if m.Attributes()["publish"] != "true" {
 		h.metrics.Inc(ignoredMetric)
-		return
+		return // Message will eventually be redelivered.
 	}
 
 	msgName := string(m.Data())
-	msg, err := h.f.Get(msgName)
+	msg, err := h.fetcher.Get(msgName)
 	if err != nil {
 		log.Warningf("Error fetching message %v: %v", msgName, err)
 		h.metrics.Inc(fetchErrorMetric)
-		return
+		return // Message will eventually be redelivered.
 	}
-	if _, err := h.s.Send(msg); err != nil {
+
+	if _, err := h.sender.Send(msg); err != nil {
 		log.Warningf("Error sending message %v: %v", msgName, err)
 		h.metrics.Inc(sendErrorMetric)
-		return
+		return // Message will eventually be redelivered.
 	}
 
 	m.Ack()

@@ -23,34 +23,26 @@ import (
 	"shared/testingutil"
 )
 
-const (
-	msgName = "projects/1/datasets/2/hl7/messagestore/messages/3"
-)
+const msgName = "projects/1/datasets/2/hl7/messagestore/messages/3"
 
-var (
-	msgBytes = []byte("messagebody")
-)
+var msgBytes = []byte("messagebody")
 
+// The only noticeable difference between this and pubsub.Message is that
+// Ack doesn't do anything.
+//
+// Conforms to //third_party/cloud/healthcare/hl7/shared/pubsub/pubsub.Message.
 type fakeMessage struct {
-	name    string
-	acked   bool
-	publish bool
+	data       []byte
+	attributes map[string]string
+
+	acked bool
 }
 
-func (m *fakeMessage) Ack() {
-	m.acked = true
-}
+func (fm *fakeMessage) Ack() { fm.acked = true }
 
-func (m *fakeMessage) Data() []byte {
-	return []byte(m.name)
-}
+func (fm *fakeMessage) Data() []byte { return fm.data }
 
-func (m *fakeMessage) Attrs() map[string]string {
-	if !m.publish {
-		return map[string]string{}
-	}
-	return map[string]string{"publish": "true"}
-}
+func (fm *fakeMessage) Attributes() map[string]string { return fm.attributes }
 
 type fakeFetcher struct {
 	msgs map[string][]byte
@@ -88,7 +80,7 @@ func TestHandle(t *testing.T) {
 	}{
 		{
 			name:            "ok",
-			msg:             &fakeMessage{name: msgName, publish: true},
+			msg:             &fakeMessage{data: []byte(msgName), attributes: map[string]string{"publish": "true"}},
 			sender:          &fakeSender{},
 			sentMsgExpected: msgBytes,
 			ackExpected:     true,
@@ -96,19 +88,19 @@ func TestHandle(t *testing.T) {
 		},
 		{
 			name:            "not published",
-			msg:             &fakeMessage{name: msgName, publish: false},
+			msg:             &fakeMessage{data: []byte(msgName)},
 			sender:          &fakeSender{},
 			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 0, sendErrorMetric: 0, ignoredMetric: 1},
 		},
 		{
 			name:            "msg not found",
-			msg:             &fakeMessage{name: "invalid_name", publish: true},
+			msg:             &fakeMessage{data: []byte("invalid_name"), attributes: map[string]string{"publish": "true"}},
 			sender:          &fakeSender{},
 			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 1, sendErrorMetric: 0, ignoredMetric: 0},
 		},
 		{
 			name:            "send error",
-			msg:             &fakeMessage{name: msgName, publish: true},
+			msg:             &fakeMessage{data: []byte(msgName), attributes: map[string]string{"publish": "true"}},
 			sender:          &fakeSender{error: true},
 			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 0, sendErrorMetric: 1, ignoredMetric: 0},
 		},
