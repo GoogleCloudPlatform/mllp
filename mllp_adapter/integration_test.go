@@ -55,6 +55,7 @@ func TestSendToMLLPAdapter(t *testing.T) {
 		t.Errorf("Failed to find \"AA\"(Application Accept) in the returned message: %s", ack)
 	}
 
+	time.Sleep(120 * time.Second)
 	storeEncodedMessage, err := getMessageInHL7V2Store(ctx, *hl7V2StoreID, "sendFacility = \"FROM_FACILITY_A\"", 1)
 	if err != nil {
 		t.Fatalf("Get message in the HL7V2 store: %v", err)
@@ -95,7 +96,7 @@ func TestMLLPAdapterListenToPubSub(t *testing.T) {
 	}
 	// Sleep some time for the message to be propagated to the fake hospital
 	// store.
-	time.Sleep(5 * time.Second)
+	time.Sleep(60 * time.Second)
 	storeEncodedMessage, err := getMessageInHL7V2Store(ctx, *fakeHospitalStoreID, "sendFacility = \"FROM_FACILITY_C\"", 1)
 	if err != nil {
 		t.Fatalf("Get message in the fake hospital store: %v", err)
@@ -111,22 +112,17 @@ func TestMLLPAdapterListenToPubSub(t *testing.T) {
 }
 
 func getMessageInHL7V2Store(ctx context.Context, storeID, filter string, wantCount int) (string, error) {
-	lr, err := hl7V2StoreService.Messages.List(hl7V2StoreName(storeID)).Filter(filter).Context(ctx).Do()
+	lr, err := hl7V2StoreService.Messages.List(hl7V2StoreName(storeID)).Filter(filter).View("RAW_ONLY").Context(ctx).Do()
 	if err != nil {
 		return "", fmt.Errorf("failed to list messages with filter %q: %v", filter, err)
 	}
-	if got := len(lr.Messages); got != wantCount {
+	if got := len(lr.Hl7V2Messages); got != wantCount {
 		return "", fmt.Errorf("listing messages with filter %q returned %d messages, want %d", filter, got, wantCount)
 	}
 	if wantCount == 0 {
 		return "", nil
 	}
-	messageName := lr.Messages[0]
-	gr, err := hl7V2StoreService.Messages.Get(messageName).Context(ctx).Do()
-	if err != nil {
-		return "", fmt.Errorf("failed to get message with id %q: %v", messageName, err)
-	}
-	return gr.Data, nil
+	return lr.Hl7V2Messages[0].Data, nil
 }
 
 func sendHL7V2MessageToMLLPAdapter(t *testing.T, hl7V2Message string) ([]byte, error) {
