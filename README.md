@@ -80,6 +80,19 @@ You should be able to send HL7v2 messages now:
 echo -n -e '\x0btestmessage\x1c\x0d' | telnet localhost 2575
 ```
 
+> **_NOTE:_** Older versions of the MLLP adapter subscribed to the single
+> Pub/Sub topic configured in an HL7v2 store's `notification_config` field, and
+> sent an outgoing message if a Pub/Sub notification had the "publish" attribute
+> set (i.e. notification sent by the messages.create method). The new
+> recommended method is to use the HL7v2 store's configurable
+> `notification_configs` field to route messages to separate Pub/Sub topics and
+> configure the MLLP adapter to subscribe to a topic that contains only messages
+> it should send.
+>
+> To continue using the old behavior, set the `--legacy_publish_attribute=true`
+> flag when running the image. This functionality is deprecated and the publish
+> attribute will be removed in a future release.
+
 ## Deployment
 
 ### Use Customized Service Account

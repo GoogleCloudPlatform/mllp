@@ -41,22 +41,24 @@ type Sender interface {
 
 // Handler represents a message handler.
 type Handler struct {
-	metrics *monitoring.Client
-	f       Fetcher
-	s       Sender
+	metrics               *monitoring.Client
+	f                     Fetcher
+	s                     Sender
+	checkPublishAttribute bool
 }
 
 // New creates a new message handler.
-func New(m *monitoring.Client, f Fetcher, s Sender) *Handler {
+func New(m *monitoring.Client, f Fetcher, s Sender, checkPublishAttribute bool) *Handler {
 	m.NewInt64(fetchErrorMetric)
 	m.NewInt64(sendErrorMetric)
 	m.NewInt64(processedMetric)
 	m.NewInt64(ignoredMetric)
 
 	return &Handler{
-		metrics: m,
-		f:       f,
-		s:       s,
+		metrics:               m,
+		f:                     f,
+		s:                     s,
+		checkPublishAttribute: checkPublishAttribute,
 	}
 }
 
@@ -64,10 +66,12 @@ func New(m *monitoring.Client, f Fetcher, s Sender) *Handler {
 func (h *Handler) Handle(m pubsub.Message) {
 	h.metrics.Inc(processedMetric)
 
-	// Ignore messages that are not meant to be published.
-	if m.Attrs()["publish"] != "true" {
-		h.metrics.Inc(ignoredMetric)
-		return
+	if h.checkPublishAttribute {
+		// Ignore messages that are not meant to be published.
+		if m.Attrs()["publish"] != "true" {
+			h.metrics.Inc(ignoredMetric)
+			return
+		}
 	}
 
 	msgName := string(m.Data())

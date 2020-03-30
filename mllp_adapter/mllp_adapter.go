@@ -35,18 +35,20 @@ import (
 var (
 	// 2575 is the default port for HL7 over TCP
 	// https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=2575
-	port               = flag.Int("port", 2575, "Port on which to listen for incoming MLLP connections")
-	apiAddrPrefix      = flag.String("api_addr_prefix", "healthcare.googleapis.com/v1beta1", "Prefix of the Cloud Healthcare API, including scheme and version")
-	mllpAddr           = flag.String("mllp_addr", "", "Target address for outgoing MLLP connections")
-	receiverIP         = flag.String("receiver_ip", "", "IP address for incoming MLLP connections")
-	pubsubProjectID    = flag.String("pubsub_project_id", "", "Project ID that owns the pubsub topic")
-	pubsubSubscription = flag.String("pubsub_subscription", "", "Pubsub subscription to read for notifications of new messages")
-	hl7V2ProjectID     = flag.String("hl7_v2_project_id", "", "Project ID that owns the healthcare dataset")
-	hl7V2LocationID    = flag.String("hl7_v2_location_id", "", "ID of Cloud Location where the healthcare dataset is stored")
-	hl7V2DatasetID     = flag.String("hl7_v2_dataset_id", "", "ID of the healthcare dataset")
-	hl7V2StoreID       = flag.String("hl7_v2_store_id", "", "ID of the HL7v2 store inside the healthcare dataset")
-	exportStats        = flag.Bool("export_stats", true, "[Optional] Whether to export stackdriver stats")
-	credentials        = flag.String("credentials", "", "[Optional] Path to the credentials file (in JSON format). The default service account will be used if not provided.")
+	port                  = flag.Int("port", 2575, "Port on which to listen for incoming MLLP connections")
+	apiAddrPrefix         = flag.String("api_addr_prefix", "healthcare.googleapis.com/v1beta1", "Prefix of the Cloud Healthcare API, including scheme and version")
+	mllpAddr              = flag.String("mllp_addr", "", "Target address for outgoing MLLP connections")
+	receiverIP            = flag.String("receiver_ip", "", "IP address for incoming MLLP connections")
+	pubsubProjectID       = flag.String("pubsub_project_id", "", "Project ID that owns the pubsub topic")
+	pubsubSubscription    = flag.String("pubsub_subscription", "", "Pubsub subscription to read for notifications of new messages")
+	hl7V2ProjectID        = flag.String("hl7_v2_project_id", "", "Project ID that owns the healthcare dataset")
+	hl7V2LocationID       = flag.String("hl7_v2_location_id", "", "ID of Cloud Location where the healthcare dataset is stored")
+	hl7V2DatasetID        = flag.String("hl7_v2_dataset_id", "", "ID of the healthcare dataset")
+	hl7V2StoreID          = flag.String("hl7_v2_store_id", "", "ID of the HL7v2 store inside the healthcare dataset")
+	exportStats           = flag.Bool("export_stats", true, "[Optional] Whether to export stackdriver stats")
+	credentials           = flag.String("credentials", "", "[Optional] Path to the credentials file (in JSON format). The default service account will be used if not provided.")
+	checkPublishAttribute = flag.Bool("legacy_publish_attribute", false,
+		"[Optional] Whether to check for the publish attribute when reading pubsub subscriptions. This attribute appears only in the notifications from messages.create method, and will be removed in a future release.")
 )
 
 func main() {
@@ -89,7 +91,7 @@ func run() error {
 		log.Infof("Either --pubsub_project_id or --pubsub_subscription is not provided, notifications of the new messages are not read and no outgoing messages will be sent to the target MLLP address.")
 	} else {
 		sender := mllpsender.NewSender(*mllpAddr, mon)
-		handler := handler.New(mon, apiClient, sender)
+		handler := handler.New(mon, apiClient, sender, *checkPublishAttribute)
 		go func() {
 			err := pubsub.Listen(ctx, *credentials, handler, *pubsubProjectID, *pubsubSubscription)
 			log.Errorf("MLLP Adapter: failed to connect to PubSub channel: %v", err)

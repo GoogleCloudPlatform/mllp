@@ -82,6 +82,7 @@ func TestHandle(t *testing.T) {
 		name            string
 		msg             *fakeMessage
 		sender          *fakeSender
+		checkPublish    bool
 		sentMsgExpected []byte
 		ackExpected     bool
 		expectedMetrics map[string]int64
@@ -90,6 +91,7 @@ func TestHandle(t *testing.T) {
 			name:            "ok",
 			msg:             &fakeMessage{name: msgName, publish: true},
 			sender:          &fakeSender{},
+			checkPublish:    true,
 			sentMsgExpected: msgBytes,
 			ackExpected:     true,
 			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 0, sendErrorMetric: 0, ignoredMetric: 0},
@@ -98,18 +100,30 @@ func TestHandle(t *testing.T) {
 			name:            "not published",
 			msg:             &fakeMessage{name: msgName, publish: false},
 			sender:          &fakeSender{},
+			checkPublish:    true,
 			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 0, sendErrorMetric: 0, ignoredMetric: 1},
+		},
+		{
+			name:            "not published - disable check",
+			msg:             &fakeMessage{name: msgName, publish: false},
+			sender:          &fakeSender{},
+			checkPublish:    false,
+			sentMsgExpected: msgBytes,
+			ackExpected:     true,
+			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 0, sendErrorMetric: 0, ignoredMetric: 0},
 		},
 		{
 			name:            "msg not found",
 			msg:             &fakeMessage{name: "invalid_name", publish: true},
 			sender:          &fakeSender{},
+			checkPublish:    true,
 			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 1, sendErrorMetric: 0, ignoredMetric: 0},
 		},
 		{
 			name:            "send error",
 			msg:             &fakeMessage{name: msgName, publish: true},
 			sender:          &fakeSender{error: true},
+			checkPublish:    true,
 			expectedMetrics: map[string]int64{processedMetric: 1, fetchErrorMetric: 0, sendErrorMetric: 1, ignoredMetric: 0},
 		},
 	}
@@ -117,7 +131,7 @@ func TestHandle(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mt := monitoring.NewClient()
 			fetcher := &fakeFetcher{msgs: map[string][]byte{msgName: msgBytes}}
-			handler := New(mt, fetcher, tc.sender)
+			handler := New(mt, fetcher, tc.sender, tc.checkPublish)
 			handler.Handle(tc.msg)
 
 			if !bytes.Equal(tc.sender.msgSent, tc.sentMsgExpected) {
