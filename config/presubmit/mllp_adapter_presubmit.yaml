@@ -29,6 +29,7 @@ spec:
             - "--logtostderr"
             - "--receiver_ip=0.0.0.0"
             - "--mllp_addr=0.0.0.0:2576"
+            - "--legacy_publish_attribute"
 
         - name: fake-hospital-presubmit
           imagePullPolicy: Always
@@ -47,3 +48,4 @@ spec:
             - "--logtostderr"
             - "--receiver_ip=0.0.0.0"
             - "--port=2576"
+            - "--legacy_publish_attribute"
