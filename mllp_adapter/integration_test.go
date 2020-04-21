@@ -26,9 +26,9 @@ import (
 
 	"flag"
 	log "github.com/golang/glog"
-	"mllp_adapter/mllp"
+	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
 
-	healthcare "google.golang.org/api/healthcare/v1beta1"
+	healthcare "google.golang.org/api/healthcare/v1"
 )
 
 var (
@@ -93,9 +93,6 @@ func TestMLLPAdapterListenToPubSub(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	// Sleep some time for the message to be propagated to the fake hospital
-	// store.
-	time.Sleep(5 * time.Second)
 	storeEncodedMessage, err := getMessageInHL7V2Store(ctx, *fakeHospitalStoreID, "sendFacility = \"FROM_FACILITY_C\"", 1)
 	if err != nil {
 		t.Fatalf("Get message in the fake hospital store: %v", err)
@@ -111,22 +108,24 @@ func TestMLLPAdapterListenToPubSub(t *testing.T) {
 }
 
 func getMessageInHL7V2Store(ctx context.Context, storeID, filter string, wantCount int) (string, error) {
-	lr, err := hl7V2StoreService.Messages.List(hl7V2StoreName(storeID)).Filter(filter).Context(ctx).Do()
-	if err != nil {
-		return "", fmt.Errorf("failed to list messages with filter %q: %v", filter, err)
+	for i := 0; i < 6; i++ {
+		time.Sleep(10 * time.Second)
+		lr, err := hl7V2StoreService.Messages.List(hl7V2StoreName(storeID)).Filter(filter).View("RAW_ONLY").Context(ctx).Do()
+		if err != nil {
+			return "", fmt.Errorf("failed to list messages with filter %q: %v", filter, err)
+		}
+		if got := len(lr.Hl7V2Messages); got != wantCount {
+			if i < 6 {
+				continue
+			}
+			return "", fmt.Errorf("listing messages with filter %q returned %d messages, want %d", filter, got, wantCount)
+		}
+		if wantCount == 0 {
+			return "", nil
+		}
+		return lr.Hl7V2Messages[0].Data, nil
 	}
-	if got := len(lr.Messages); got != wantCount {
-		return "", fmt.Errorf("listing messages with filter %q returned %d messages, want %d", filter, got, wantCount)
-	}
-	if wantCount == 0 {
-		return "", nil
-	}
-	messageName := lr.Messages[0]
-	gr, err := hl7V2StoreService.Messages.Get(messageName).Context(ctx).Do()
-	if err != nil {
-		return "", fmt.Errorf("failed to get message with id %q: %v", messageName, err)
-	}
-	return gr.Data, nil
+	return "", nil
 }
 
 func sendHL7V2MessageToMLLPAdapter(t *testing.T, hl7V2Message string) ([]byte, error) {
@@ -198,8 +197,10 @@ func deleteDataset(ctx context.Context) error {
 func createHL7V2Store(ctx context.Context, storeID, pubsubTopic string) error {
 	store := &healthcare.Hl7V2Store{}
 	if pubsubTopic != "" {
-		store.NotificationConfig = &healthcare.NotificationConfig{
-			PubsubTopic: fmt.Sprintf("projects/%s/topics/%s", *hl7V2ProjectID, pubsubTopic),
+		store.NotificationConfigs = []*healthcare.Hl7V2NotificationConfig{
+			&healthcare.Hl7V2NotificationConfig{
+				PubsubTopic: fmt.Sprintf("projects/%s/topics/%s", *hl7V2ProjectID, pubsubTopic),
+			},
 		}
 	}
 	_, err := hl7V2StoreService.Create(datasetName(), store).Hl7V2StoreId(storeID).Context(ctx).Do()

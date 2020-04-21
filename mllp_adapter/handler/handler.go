@@ -18,8 +18,8 @@ package handler
 
 import (
 	log "github.com/golang/glog"
-	"shared/monitoring"
-	"shared/pubsub"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/shared/pubsub"
 )
 
 const (

@@ -24,19 +24,19 @@ import (
 	"flag"
 	
 	log "github.com/golang/glog"
-	"mllp_adapter/handler"
-	"mllp_adapter/mllpreceiver"
-	"mllp_adapter/mllpsender"
-	"shared/healthapiclient"
-	"shared/monitoring"
-	"shared/pubsub"
+	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/handler"
+	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllpreceiver"
+	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllpsender"
+	"github.com/GoogleCloudPlatform/mllp/shared/healthapiclient"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/shared/pubsub"
 )
 
 var (
 	// 2575 is the default port for HL7 over TCP
 	// https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=2575
 	port                  = flag.Int("port", 2575, "Port on which to listen for incoming MLLP connections")
-	apiAddrPrefix         = flag.String("api_addr_prefix", "healthcare.googleapis.com/v1beta1", "Prefix of the Cloud Healthcare API, including scheme and version")
+	apiAddrPrefix         = flag.String("api_addr_prefix", "", "[Deprecated] Prefix of the Cloud Healthcare API, including scheme and version")
 	mllpAddr              = flag.String("mllp_addr", "", "Target address for outgoing MLLP connections")
 	receiverIP            = flag.String("receiver_ip", "", "IP address for incoming MLLP connections")
 	pubsubProjectID       = flag.String("pubsub_project_id", "", "Project ID that owns the pubsub topic")
@@ -79,10 +79,10 @@ func run() error {
 		}()
 	}
 
-	if *apiAddrPrefix == "" {
-		return fmt.Errorf("required flag value --api_addr_prefix not provided")
+	if *apiAddrPrefix != "" {
+		log.Warningf("Flag --api_addr_prefix deprecated, API calls will be made to healthcare.googleapis.com/v1.")
 	}
-	apiClient, err := healthapiclient.NewHL7V2Client(ctx, *credentials, mon, *apiAddrPrefix, *hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID)
+	apiClient, err := healthapiclient.NewHL7V2Client(ctx, *credentials, mon, *hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID)
 	if err != nil {
 		return fmt.Errorf("failed to connect to HL7v2 API: %v", err)
 	}

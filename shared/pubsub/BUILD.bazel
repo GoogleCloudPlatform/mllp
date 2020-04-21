@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 package(default_visibility = ["//:__subpackages__"])
 
 go_library(
     name = "go_default_library",
     srcs = ["pubsub.go"],
-    importpath = "shared/pubsub",
+    importpath = "github.com/GoogleCloudPlatform/mllp/shared/pubsub",
     deps = [
-        "//shared/monitoring:go_default_library",
         "//shared/util:go_default_library",
-        "@com_github_golang_glog//:go_default_library",
         "@com_google_cloud_go//pubsub:go_default_library",
-        "@org_golang_google_api//iterator:go_default_library",
         "@org_golang_google_api//option:go_default_library",
-        "@org_golang_x_net//context:go_default_library",
     ],
 )

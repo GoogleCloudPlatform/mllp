@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"testing"
 
-	"shared/monitoring"
-	"shared/testingutil"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/shared/testingutil"
 )
 
 const (

@@ -19,15 +19,14 @@ package(default_visibility = ["//:__subpackages__"])
 go_library(
     name = "go_default_library",
     srcs = ["healthapiclient.go"],
-    importpath = "shared/healthapiclient",
+    importpath = "github.com/GoogleCloudPlatform/mllp/shared/healthapiclient",
     deps = [
         "//shared/monitoring:go_default_library",
         "//shared/util:go_default_library",
         "@com_github_golang_glog//:go_default_library",
+        "@org_golang_google_api//googleapi:go_default_library",
+        "@org_golang_google_api//healthcare/v1:go_default_library",
         "@org_golang_google_api//option:go_default_library",
-        "@org_golang_google_api//transport:go_default_library",
-        "@org_golang_x_net//context:go_default_library",
-        "@org_golang_x_oauth2//google:go_default_library",
     ],
 )
 
@@ -37,7 +36,9 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//shared/monitoring:go_default_library",
-        "//shared/util:go_default_library",
         "//shared/testingutil:go_default_library",
+        "//shared/util:go_default_library",
+        "@org_golang_google_api//healthcare/v1:go_default_library",
+        "@org_golang_google_api//option:go_default_library",
     ],
 )

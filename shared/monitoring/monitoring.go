@@ -28,7 +28,7 @@ import (
 	"cloud.google.com/go/monitoring/apiv3"
 	gax "github.com/googleapis/gax-go"
 	"google.golang.org/api/option"
-	"shared/util"
+	"github.com/GoogleCloudPlatform/mllp/shared/util"
 
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"

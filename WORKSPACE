@@ -13,99 +13,135 @@
 # limitations under the License.
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 http_archive(
     name = "io_bazel_rules_go",
-    urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.17.0/rules_go-0.17.0.tar.gz"],
-    sha256 = "492c3ac68ed9dcf527a07e6a1b2dcbf199c6bf8b35517951467ac32e421c06c1",
+    sha256 = "7b9bbe3ea1fccb46dcfa6c3f3e29ba7ec740d8733370e21cdc8937467b4a4349",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.22.4/rules_go-v0.22.4.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.22.4/rules_go-v0.22.4.tar.gz",
+    ],
 )
 
 http_archive(
     name = "bazel_gazelle",
-    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.16.0/bazel-gazelle-0.16.0.tar.gz"],
-    sha256 = "7949fc6cc17b5b191103e97481cf8889217263acf52e00b560683413af204fcb",
+    sha256 = "d8c45ee70ec39a57e7a05e5027c32b1576cc7f16d9dd37135b0eddde45cf1b10",
+    urls = [
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/v0.20.0/bazel-gazelle-v0.20.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.20.0/bazel-gazelle-v0.20.0.tar.gz",
+    ],
 )
 
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "9748c0d90e54ea09e5e75fb7fac16edce15d2028d4356f32211cfa3c0e956564",
+    strip_prefix = "protobuf-3.11.4",
+    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.11.4.zip"],
+)
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 go_rules_dependencies()
+
 go_register_toolchains()
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 gazelle_dependencies()
 
 go_repository(
     name = "io_opencensus_go",
-    commit = "b4a14686f0a98096416fe1b4cb848e384fb2b22b",
+    commit = "46dfec7deb6e8c5d4a46f355c0da7c6d6dc59ba4",
     importpath = "go.opencensus.io",
 )
 
 go_repository(
     name = "org_golang_google_grpc",
-    commit = "24a4d6eb88bfde69ca4ef12fa00aef31059f74ec",
+    commit = "f67e7c03dcbcfc81906f302a87ab0d400738877d",
     importpath = "google.golang.org/grpc",
 )
 
 go_repository(
     name = "org_golang_google_api",
-    commit = "954df90885a21cbb22088134ab537facda86943c",
+    commit = "c8cf5cff125e500044b60204f230024dcc49c3a3",
     importpath = "google.golang.org/api",
 )
 
 go_repository(
     name = "org_golang_google_genproto",
-    commit = "fa694d86fc64c7654a660f8908de4e879866748d",
+    commit = "fb6d0575620bc914112d1a67d55ba8c090b1aa11",
     importpath = "google.golang.org/genproto",
 )
 
 go_repository(
     name = "com_github_googleapis_gax_go",
-    commit = "bd5b16380fd03dc758d11cef74ba2e3bc8b0e8c2",
+    commit = "be11bb253a768098254dc71e95d1a81ced778de3",
     importpath = "github.com/googleapis/gax-go",
 )
 
 go_repository(
     name = "com_google_cloud_go",
-    commit = "f23c43891e43fa5323eb751293c177f0a4196b1a",
+    commit = "6416cc735b86e81cff3f558da87aee244e204472",
     importpath = "cloud.google.com/go",
 )
 
 go_repository(
     name = "org_golang_x_oauth2",
-    commit = "0f29369cfe4552d0e4bcddc57cc75f4d7e672a33",
+    commit = "bf48bf16ab8d622ce64ec6ce98d2c98f916b6303",
     importpath = "golang.org/x/oauth2",
 )
 
 go_repository(
     name = "org_golang_x_sync",
-    commit = "112230192c580c3556b8cee6403af37a4fc5f28c",
+    commit = "43a5402ce75a95522677f77c619865d66b8c57ab",
     importpath = "golang.org/x/sync",
 )
 
 go_repository(
     name = "org_golang_x_net",
-    commit = "74dc4d7220e7acc4e100824340f3e66577424772",
+    commit = "d3edc9973b7eb1fb302b0ff2c62357091cea9a30",
     importpath = "golang.org/x/net",
 )
 
 go_repository(
     name = "com_github_kylelemons_godebug",
-    commit = "a435ca668a924cbe28b15c21c2f9d46ed72e6783",
+    commit = "fa7b53cdfc9105c70f134574002f406232921437",
     importpath = "github.com/kylelemons/godebug",
 )
 
 go_repository(
-    name = "com_github_hashicorp_golang_lru",
-    commit = "7f827b33c0f158ec5dfbba01bb0b14a4541fd81d",
-    importpath = "github.com/hashicorp/golang-lru",
+    name = "com_github_golang_groupcache",
+    commit = "8c9f03a8e57eb486e42badaed3fb287da51807ba",
+    importpath = "github.com/golang/groupcache",
+)
+
+go_repository(
+    name = "com_github_golang_glog",
+    commit = "23def4e6c14b4da8ac2ed8007337bc5eb5007998",
+    importpath = "github.com/golang/glog",
+)
+
+go_repository(
+    name = "org_golang_x_text",
+    commit = "06d492aade888ab8698aad35476286b7b555c961",
+    importpath = "golang.org/x/text",
+)
+
+go_repository(
+    name = "com_github_google_go_cmp",
+    commit = "cb8c7f84fcfb230736f1e5922b3132f47bc88500",
+    importpath = "github.com/google/go-cmp",
 )
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "aed1c249d4ec8f703edddf35cbe9dfaca0b5f5ea6e4cd9e83e99f3b0d1136c3d",
-    strip_prefix = "rules_docker-0.7.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.7.0.tar.gz"],
+    sha256 = "dc97fccceacd4c6be14e800b2a00693d5e8d07f69ee187babfd04a80a9f8e250",
+    strip_prefix = "rules_docker-0.14.1",
+    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.14.1/rules_docker-v0.14.1.tar.gz"],
 )
 
 load("@io_bazel_rules_docker//go:image.bzl", _go_image_repos = "repositories")

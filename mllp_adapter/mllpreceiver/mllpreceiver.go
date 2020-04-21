@@ -23,8 +23,8 @@ import (
 	"time"
 
 	log "github.com/golang/glog"
-	"mllp_adapter/mllp"
-	"shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 )
 
 // The sender interface represents the destination to which HL7 messages are sent, one at a time.

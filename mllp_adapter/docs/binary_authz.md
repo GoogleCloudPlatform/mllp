@@ -365,7 +365,6 @@ spec:
             - "--hl7_v2_location_id=<your-hl7v2-store-location-id>"
             - "--hl7_v2_dataset_id=<your-hl7v2-dataset-id>"
             - "--hl7_v2_store_id=<your-hl7v2-store-id>"
-            - "--api_addr_prefix=https://healthcare.googleapis.com:443/v1alpha2"
             - "--logtostderr"
             - "--receiver_ip=0.0.0.0"
 ```

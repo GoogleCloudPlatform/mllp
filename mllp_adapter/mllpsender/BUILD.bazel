@@ -19,7 +19,7 @@ package(default_visibility = ["//:__subpackages__"])
 go_library(
     name = "go_default_library",
     srcs = ["mllpsender.go"],
-    importpath = "mllp_adapter/mllpsender",
+    importpath = "github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllpsender",
     deps = [
         "//mllp_adapter/mllp:go_default_library",
         "//shared/monitoring:go_default_library",
@@ -34,7 +34,6 @@ go_test(
     deps = [
         "//mllp_adapter/mllp:go_default_library",
         "//shared/monitoring:go_default_library",
-        "//shared/util:go_default_library",
         "//shared/testingutil:go_default_library",
     ],
 )

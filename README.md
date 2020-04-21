@@ -57,7 +57,7 @@ docker images
 To run the image locally:
 
 ```bash
-docker run -p 127.0.0.1:2575:2575 -v ~/.config:/root/.config gcr.io/cloud-healthcare-containers/mllp-adapter /usr/mllp_adapter/mllp_adapter --hl7_v2_project_id=<PROJECT_ID> --hl7_v2_location_id=<LOCATION_ID> --hl7_v2_dataset_id=<DATASET_ID> --hl7_v2_store_id=<STORE_ID> --export_stats=false --receiver_ip=0.0.0.0 --pubsub_project_id=<PUBSUB_PROJECT_ID> --pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID> --api_addr_prefix=<API_ADDR_PREFIX>
+docker run -p 127.0.0.1:2575:2575 -v ~/.config:/root/.config gcr.io/cloud-healthcare-containers/mllp-adapter /usr/mllp_adapter/mllp_adapter --hl7_v2_project_id=<PROJECT_ID> --hl7_v2_location_id=<LOCATION_ID> --hl7_v2_dataset_id=<DATASET_ID> --hl7_v2_store_id=<STORE_ID> --export_stats=false --receiver_ip=0.0.0.0 --pubsub_project_id=<PUBSUB_PROJECT_ID> --pubsub_subscription=<PUBSUB_SUBSCRIPTION_ID>
 ```
 
 In the command above:
@@ -69,9 +69,6 @@ to gcloud credentials;
 Also note that:
 * `PUBSUB_PROJECT_ID` and `PUBSUB_SUBSCRIPTION_ID` are available
 by creating a pubsub topic and a subscription on Google Cloud;
-* `API_ADDR_PREFIX` is of form `https://healthcare.googleapis.com:443/v1beta1`,
-`443` here is the port, `v1beta1` is the API version. Both port and version
-shall be presented.
 
 You should be able to send HL7v2 messages now:
 

@@ -18,7 +18,7 @@ package testingutil
 import (
 	"testing"
 
-	"shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 )
 
 // CheckMetrics checks whether metrics match expected.

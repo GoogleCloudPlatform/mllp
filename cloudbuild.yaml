@@ -41,17 +41,17 @@ steps:
   waitFor: ['-']
 
 - id: 'Build all'
-  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  name: gcr.io/cloud-builders/bazel
   args: ['build', '--spawn_strategy=standalone', '//mllp_adapter/...']
   waitFor: ['-']
 
 - id: 'Unit tests'
-  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  name: gcr.io/cloud-builders/bazel
   args: ['test', '--spawn_strategy=standalone', '--test_output=all', '//mllp_adapter/...']
   waitFor: ['Build all']
 
 - id: 'Build docker image'
-  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  name: gcr.io/cloud-builders/bazel
   args: ['run', '--spawn_strategy=standalone', '//mllp_adapter:mllp_adapter_docker']
   waitFor: ['Unit tests']
 
@@ -98,7 +98,7 @@ steps:
     echo $(get_ip) > _mllp_adapter_ip # save ip for use in next step
 
 - id: 'Integration tests'
-  name: gcr.io/cloud-builders/bazel@sha256:f90ce4e9d9e680be341edb9571c033bc24aea8603d23468f1e00f10349979977
+  name: gcr.io/cloud-builders/bazel
   entrypoint: 'bash'
   args:
   - '-c'

@@ -19,11 +19,11 @@ package(default_visibility = ["//:__subpackages__"])
 go_library(
     name = "go_default_library",
     srcs = ["handler.go"],
-    importpath = "mllp_adapter/handler",
+    importpath = "github.com/GoogleCloudPlatform/mllp/mllp_adapter/handler",
     deps = [
-        "@com_github_golang_glog//:go_default_library",
         "//shared/monitoring:go_default_library",
         "//shared/pubsub:go_default_library",
+        "@com_github_golang_glog//:go_default_library",
     ],
 )
 
@@ -32,6 +32,7 @@ go_test(
     srcs = ["handler_test.go"],
     embed = [":go_default_library"],
     deps = [
+        "//shared/monitoring:go_default_library",
         "//shared/testingutil:go_default_library",
     ],
 )

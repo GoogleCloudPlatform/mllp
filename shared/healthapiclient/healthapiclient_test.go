@@ -15,8 +15,8 @@
 package healthapiclient
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -24,62 +24,44 @@ import (
 	"strings"
 	"testing"
 
-	"shared/monitoring"
-	"shared/testingutil"
-	"shared/util"
+	"google.golang.org/api/option"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/shared/testingutil"
+	"github.com/GoogleCloudPlatform/mllp/shared/util"
+
+	healthcare "google.golang.org/api/healthcare/v1"
 )
 
 const (
-	projectReference    = "123"
-	locationID          = "test-central1"
-	datasetID           = "456"
-	hl7V2StoreID        = "678"
-	msgID               = "890"
-	fhirStoreID         = "101"
-	fhirResID           = "p1"
-	pathPrefix          = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/"
-	sendPath            = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages:ingest"
-	getPath             = "/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/890"
-	executeBundlePath   = "/projects/123/locations/test-central1/datasets/456/fhirStores/101"
-	createdResourceName = "projects/123/locations/test-central1/datasets/456/fhirStores/101/fhir/Patient/06406a39-f4ff-43e1-8ea3-6d9f542870c8"
-	invalidErrResp      = "invalid error response"
+	projectID      = "123"
+	locationID     = "test-central1"
+	datasetID      = "456"
+	hl7V2StoreID   = "678"
+	msgID          = "890"
+	pathPrefix     = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/"
+	sendPath       = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages:ingest"
+	getPath        = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/890"
+	invalidErrResp = "invalid error response"
 )
 
 var (
-	received        = [][]byte{}
-	toSend          = map[string][]byte{}
-	cannedMsg       = []byte("abcd")
-	cannedAck       = []byte("ack")
-	writtenResource = ""
-
-	patientBundle = `{
-  "type":"TRANSACTION",
-  "entry":[
-    {
-      "request":{
-        "method":"PUT"
-      },
-      "resource":{
-        "birthDate": "1975-01-01",
-        "language": "abc",
-        "resourceType": "Patient"
-      }
-    },
-  ],
-  "resourceType":"Bundle"
-}`
-	executeBundleResp = fmt.Sprintf(`{
-  "type":"TRANSACTION_RESPONSE",
-  "entry":[
-    {
-      "response":{
-        "location": "%v",
-      }
-    },
-  ],
-  "resourceType":"Bundle"
-}`, createdResourceName)
+	received  = [][]byte{}
+	toSend    = map[string][]byte{}
+	cannedMsg = []byte("abcd")
+	cannedAck = []byte("ack")
 )
+
+type message struct {
+	Data []byte `json:"data"`
+}
+
+type sendMessageReq struct {
+	Msg message `json:"message"`
+}
+
+type sendMessageResp struct {
+	Hl7Ack []byte `json:"hl7Ack"`
+}
 
 func setUp() *httptest.Server {
 	received = [][]byte{}
@@ -131,16 +113,6 @@ func setUp() *httptest.Server {
 				}
 
 				w.Write(data)
-			case executeBundlePath:
-				defer req.Body.Close()
-				body, err := ioutil.ReadAll(req.Body)
-				if err != nil {
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-				writtenResource = string(body)
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(executeBundleResp))
 			default:
 				w.WriteHeader(http.StatusNotFound)
 			}
@@ -149,45 +121,33 @@ func setUp() *httptest.Server {
 }
 
 // newHL7V2Client creates a new Client pointed to a fake HL7v2 service.
-func newHL7V2Client(client *http.Client, apiAddrPrefix, projectReference, locationID, datasetID, hl7V2StoreID string) *HL7V2Client {
+func newHL7V2Client(client *http.Client, apiAddrPrefix, projectID, locationID, datasetID, hl7V2StoreID string) *HL7V2Client {
+	s, _ := healthcare.NewService(context.Background(), option.WithHTTPClient(client))
+	s.BasePath = apiAddrPrefix
 	c := &HL7V2Client{
-		metrics:          monitoring.NewClient(),
-		client:           client,
-		apiAddrPrefix:    apiAddrPrefix,
-		projectReference: projectReference,
-		locationID:       locationID,
-		datasetID:        datasetID,
-		hl7V2StoreID:     hl7V2StoreID,
+		metrics:      monitoring.NewClient(),
+		storeService: s.Projects.Locations.Datasets.Hl7V2Stores,
+		projectID:    projectID,
+		locationID:   locationID,
+		datasetID:    datasetID,
+		hl7V2StoreID: hl7V2StoreID,
 	}
 	c.initMetrics()
 	return c
 }
 
-// newFHIRClient creates a new Client pointed to a fake FHIR service.
-func newFHIRClient(client *http.Client, apiAddrPrefix, projectReference, locationID, datasetID, fhirStoreID string) *FHIRClient {
-	return &FHIRClient{
-		metrics:          monitoring.NewClient(),
-		client:           client,
-		apiAddrPrefix:    apiAddrPrefix,
-		projectReference: projectReference,
-		locationID:       locationID,
-		datasetID:        datasetID,
-		fhirStoreID:      fhirStoreID,
-	}
-}
-
 func TestSend(t *testing.T) {
 	testCases := []struct {
-		name             string
-		projectReference string
-		datasetID        string
-		hl7V2StoreID     string
-		msgs             [][]byte
-		expectedMetrics  map[string]int64
+		name            string
+		projectID       string
+		datasetID       string
+		hl7V2StoreID    string
+		msgs            [][]byte
+		expectedMetrics map[string]int64
 	}{
 		{
 			"single message",
-			projectReference,
+			projectID,
 			datasetID,
 			hl7V2StoreID,
 			[][]byte{cannedMsg},
@@ -195,7 +155,7 @@ func TestSend(t *testing.T) {
 		},
 		{
 			"multiple messages",
-			projectReference,
+			projectID,
 			datasetID,
 			hl7V2StoreID,
 			[][]byte{cannedMsg, cannedMsg, cannedMsg},
@@ -207,14 +167,14 @@ func TestSend(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setUp()
 			defer s.Close()
-			c := newHL7V2Client(s.Client(), s.URL, tc.projectReference, locationID, tc.datasetID, tc.hl7V2StoreID)
+			c := newHL7V2Client(s.Client(), s.URL, tc.projectID, locationID, tc.datasetID, tc.hl7V2StoreID)
 			for _, msg := range tc.msgs {
 				ack, err := c.Send(msg)
 				if err != nil {
 					t.Errorf("Unexpected send error: %v", err)
 				}
 				if !reflect.DeepEqual(cannedAck, ack) {
-					t.Errorf("Expected ack %v but got %v", cannedAck, ack)
+					t.Errorf("Expected ack %s but got %s", cannedAck, ack)
 				}
 			}
 			if !reflect.DeepEqual(tc.msgs, received) {
@@ -227,12 +187,12 @@ func TestSend(t *testing.T) {
 
 func TestSendError(t *testing.T) {
 	testCases := []struct {
-		name             string
-		projectReference string
-		datasetID        string
-		hl7V2StoreID     string
-		msgs             [][]byte
-		expectedMetrics  map[string]int64
+		name            string
+		projectID       string
+		datasetID       string
+		hl7V2StoreID    string
+		msgs            [][]byte
+		expectedMetrics map[string]int64
 	}{
 		{
 			"wrong project ID",
@@ -244,7 +204,7 @@ func TestSendError(t *testing.T) {
 		},
 		{
 			"wrong dataset ID",
-			projectReference,
+			projectID,
 			"wrongdataset",
 			hl7V2StoreID,
 			[][]byte{cannedMsg},
@@ -252,7 +212,7 @@ func TestSendError(t *testing.T) {
 		},
 		{
 			"wrong HL7v2 store ID",
-			projectReference,
+			projectID,
 			datasetID,
 			"wronghl7v2store",
 			[][]byte{cannedMsg},
@@ -260,7 +220,7 @@ func TestSendError(t *testing.T) {
 		},
 		{
 			"invalid error response",
-			projectReference,
+			projectID,
 			datasetID,
 			hl7V2StoreID,
 			[][]byte{[]byte(invalidErrResp)},
@@ -272,7 +232,7 @@ func TestSendError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setUp()
 			defer s.Close()
-			c := newHL7V2Client(s.Client(), s.URL, tc.projectReference, locationID, tc.datasetID, tc.hl7V2StoreID)
+			c := newHL7V2Client(s.Client(), s.URL, tc.projectID, locationID, tc.datasetID, tc.hl7V2StoreID)
 			for _, msg := range tc.msgs {
 				ack, err := c.Send(msg)
 				if err == nil {
@@ -291,8 +251,8 @@ func TestGet(t *testing.T) {
 	s := setUp()
 	defer s.Close()
 	toSend = map[string][]byte{msgID: cannedMsg}
-	c := newHL7V2Client(s.Client(), s.URL, projectReference, locationID, datasetID, hl7V2StoreID)
-	msg, err := c.Get(util.GenerateHL7V2MessageName(projectReference, locationID, datasetID, hl7V2StoreID, msgID))
+	c := newHL7V2Client(s.Client(), s.URL, projectID, locationID, datasetID, hl7V2StoreID)
+	msg, err := c.Get(util.GenerateHL7V2MessageName(projectID, locationID, datasetID, hl7V2StoreID, msgID))
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -316,12 +276,12 @@ func TestGetError(t *testing.T) {
 		},
 		{
 			"wrong dataset ID",
-			util.GenerateHL7V2MessageName(projectReference, locationID, "wrong", hl7V2StoreID, msgID),
+			util.GenerateHL7V2MessageName(projectID, locationID, "wrong", hl7V2StoreID, msgID),
 			map[string]int64{fetchedMetric: 1, fetchErrorMetric: 0, fetchErrorInternalMetric: 1},
 		},
 		{
 			"wrong HL7v2 store ID",
-			util.GenerateHL7V2MessageName(projectReference, locationID, datasetID, "wrong", msgID),
+			util.GenerateHL7V2MessageName(projectID, locationID, datasetID, "wrong", msgID),
 			map[string]int64{fetchedMetric: 1, fetchErrorMetric: 0, fetchErrorInternalMetric: 1},
 		},
 		{
@@ -331,7 +291,7 @@ func TestGetError(t *testing.T) {
 		},
 		{
 			"message not found",
-			util.GenerateHL7V2MessageName(projectReference, locationID, datasetID, hl7V2StoreID, "wrong"),
+			util.GenerateHL7V2MessageName(projectID, locationID, datasetID, hl7V2StoreID, "wrong"),
 			map[string]int64{fetchedMetric: 1, fetchErrorMetric: 1, fetchErrorInternalMetric: 0},
 		},
 	}
@@ -339,75 +299,12 @@ func TestGetError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := setUp()
 			defer s.Close()
-			c := newHL7V2Client(s.Client(), s.URL, projectReference, locationID, datasetID, hl7V2StoreID)
+			c := newHL7V2Client(s.Client(), s.URL, projectID, locationID, datasetID, hl7V2StoreID)
 			msg, err := c.Get(tc.msgName)
 			if err == nil {
 				t.Errorf("Expected error but got %v", msg)
 			}
 			testingutil.CheckMetrics(t, c.metrics, tc.expectedMetrics)
-		})
-	}
-}
-
-func TestExecuteBundle(t *testing.T) {
-	s := setUp()
-	defer s.Close()
-	c := newFHIRClient(s.Client(), s.URL, projectReference, locationID, datasetID, fhirStoreID)
-	_, err := c.ExecuteBundle([]byte(patientBundle))
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if writtenResource != patientBundle {
-		t.Errorf("Server didn't receive the same bundle, got: \n%v\n, wanted: \n%v\n", writtenResource, patientBundle)
-	}
-}
-
-func TestExecuteBundle_Errors(t *testing.T) {
-	testCases := []struct {
-		name             string
-		projectReference string
-		locationID       string
-		datasetID        string
-		fhirStoreID      string
-	}{
-		{
-			"wrong project ID",
-			"wrong",
-			locationID,
-			datasetID,
-			fhirStoreID,
-		},
-		{
-			"wrong dataset ID",
-			projectReference,
-			locationID,
-			"wrong",
-			fhirStoreID,
-		},
-		{
-			"wrong location ID",
-			projectReference,
-			"wrong",
-			datasetID,
-			fhirStoreID,
-		},
-		{
-			"wrong FHIR store ID",
-			projectReference,
-			locationID,
-			datasetID,
-			"wrong",
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			s := setUp()
-			defer s.Close()
-			c := newFHIRClient(s.Client(), s.URL, tc.projectReference, tc.locationID, tc.datasetID, tc.fhirStoreID)
-			_, err := c.ExecuteBundle([]byte(patientBundle))
-			if err == nil {
-				t.Errorf("Expected error but got none")
-			}
 		})
 	}
 }

@@ -20,9 +20,9 @@ import (
 	"strconv"
 	"testing"
 
-	"mllp_adapter/mllp"
-	"shared/monitoring"
-	"shared/testingutil"
+	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/shared/testingutil"
 )
 
 var (

@@ -22,7 +22,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
-	"shared/util"
+	"github.com/GoogleCloudPlatform/mllp/shared/util"
 )
 
 const (

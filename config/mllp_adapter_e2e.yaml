@@ -24,7 +24,6 @@ spec:
             - "--hl7_v2_location_id=<LOCATION_ID>"
             - "--hl7_v2_dataset_id=<DATASET_ID>"
             - "--hl7_v2_store_id=<STORE_ID>"
-            - "--api_addr_prefix=https://healthcare.googleapis.com/v1beta1"
             - "--logtostderr"
             - "--receiver_ip=<RECEIVER_IP>"
             - "--pubsub_project_id=<PUBSUB_PROJECT_ID>"

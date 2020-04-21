@@ -20,8 +20,8 @@ import (
 	"net"
 
 	log "github.com/golang/glog"
-	"mllp_adapter/mllp"
-	"shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
+	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 )
 
 const (

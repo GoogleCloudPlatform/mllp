@@ -19,7 +19,7 @@ package(default_visibility = ["//:__subpackages__"])
 go_library(
     name = "go_default_library",
     srcs = ["mllpreceiver.go"],
-    importpath = "mllp_adapter/mllpreceiver",
+    importpath = "github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllpreceiver",
     deps = [
         "//mllp_adapter/mllp:go_default_library",
         "//shared/monitoring:go_default_library",

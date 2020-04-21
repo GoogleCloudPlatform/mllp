@@ -19,10 +19,10 @@ package(default_visibility = ["//:__subpackages__"])
 go_library(
     name = "go_default_library",
     srcs = ["util.go"],
-    importpath = "shared/util",
+    importpath = "github.com/GoogleCloudPlatform/mllp/shared/util",
     deps = [
-        "@org_golang_x_oauth2//google:go_default_library",
         "@org_golang_x_oauth2//:go_default_library",
+        "@org_golang_x_oauth2//google:go_default_library",
     ],
 )
 
