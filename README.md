@@ -4,6 +4,8 @@ The MLLP(Short for "Minimal Lower Layer Protocol") adapter is a component that
 runs on [GKE](https://cloud.google.com/kubernetes-engine/), receives HL7v2
 messages via MLLP/TCP, and forwards received messages to HL7v2 API.
 
+A comprehensive guide to using the Cloud Healthcare API MLLP adapter is available in https://cloud.google.com/healthcare/docs/how-tos/mllp-adapter. This README provides a basic overview of the adapter, but you are encouraged to view the official Google Cloud documentation.
+
 ## Requirements
 
 *   A [Google Cloud project](https://cloud.google.com).
