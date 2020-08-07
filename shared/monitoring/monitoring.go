@@ -28,6 +28,7 @@ import (
 	"cloud.google.com/go/monitoring/apiv3"
 	gax "github.com/googleapis/gax-go"
 	"google.golang.org/api/option"
+	"github.com/google/uuid"
 	"github.com/GoogleCloudPlatform/mllp/shared/util"
 
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
@@ -80,6 +81,11 @@ func ConfigureExport(ctx context.Context, cl *Client, cred string) error {
 		return err
 	}
 	cl.labels["job"] = "mllp_adapter"
+	// Use uuid to prevent multiple mllp adapter instances from submitting
+	// metrics with the same label.
+	id := uuid.New().String()
+	cl.labels["id"] = id
+	log.Infof(`Exporting stackdriver matrics with label "id"=%q`, id)
 	return nil
 }
 

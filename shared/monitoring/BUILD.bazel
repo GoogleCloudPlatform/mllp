@@ -24,6 +24,7 @@ go_library(
         "//shared/util:go_default_library",
         "@com_github_golang_glog//:go_default_library",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
+        "@com_github_google_uuid//:go_default_library",
         "@com_github_googleapis_gax_go//:go_default_library",
         "@com_google_cloud_go//compute/metadata:go_default_library",
         "@com_google_cloud_go//monitoring/apiv3:go_default_library",
