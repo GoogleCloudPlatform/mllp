@@ -340,12 +340,15 @@ Sample deployment YAML file
 #   (form: gcr.io/cloud-healthcare-containers/mllp-adapter@${digest})
 # hl7_v2_project_id, hl7_v2_location_id, and other arguments are required for having the
 # MLLP adapter actually working, but not strictly necessary to be correct in this codelab.
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mllp-adapter-deployment
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: mllp-adapter
   template:
     metadata:
       labels:
