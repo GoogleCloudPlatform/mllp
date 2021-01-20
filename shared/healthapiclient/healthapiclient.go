@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"unicode/utf8"
 
 	log "github.com/golang/glog"
 	"google.golang.org/api/googleapi"
@@ -51,6 +52,7 @@ type HL7V2Client struct {
 	locationID   string
 	datasetID    string
 	hl7V2StoreID string
+	logNACKedMsg bool
 }
 
 type sendMessageErrorResp struct {
@@ -62,7 +64,7 @@ type sendMessageErrorResp struct {
 }
 
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
-func NewHL7V2Client(ctx context.Context, cred string, metrics *monitoring.Client, projectID, locationID, datasetID, hl7V2StoreID string) (*HL7V2Client, error) {
+func NewHL7V2Client(ctx context.Context, cred string, metrics *monitoring.Client, projectID, locationID, datasetID, hl7V2StoreID string, logNACKedMsg bool) (*HL7V2Client, error) {
 	if err := validatesComponents(projectID, locationID, datasetID, hl7V2StoreID); err != nil {
 		return nil, err
 	}
@@ -79,6 +81,7 @@ func NewHL7V2Client(ctx context.Context, cred string, metrics *monitoring.Client
 		locationID:   locationID,
 		datasetID:    datasetID,
 		hl7V2StoreID: hl7V2StoreID,
+		logNACKedMsg: logNACKedMsg,
 	}
 	c.initMetrics()
 	return c, nil
@@ -148,10 +151,12 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 			}
 			if nack != nil {
 				log.Errorf("Message was sent, received a NACK response.")
+				if c.logNACKedMsg {
+					log.Errorf("The original message was %s", sanitizeMessageForPrintout(data))
+				}
 				return nack, nil
 			}
 		}
-		return nil, fmt.Errorf("request failed: %v", err)
 	}
 
 	ack, err := base64.StdEncoding.DecodeString(resp.Hl7Ack)
@@ -161,6 +166,15 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	}
 	log.Infof("Message was successfully sent.")
 	return ack, nil
+}
+
+func sanitizeMessageForPrintout(data []byte) string {
+	if utf8.Valid(data) {
+		// Convert to UTF8 if possible.
+		return string(data)
+	}
+	// Otherwise output base64 so that users can at least get the full data.
+	return fmt.Sprintf("[base64 encoded] %s", base64.StdEncoding.EncodeToString(data))
 }
 
 func extractNACKFromErrorResponse(resp []byte) ([]byte, error) {

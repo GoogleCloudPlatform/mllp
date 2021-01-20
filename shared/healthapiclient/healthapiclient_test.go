@@ -308,3 +308,30 @@ func TestGetError(t *testing.T) {
 		})
 	}
 }
+
+func TestSanitizeMessageForPrintout(t *testing.T) {
+	testCases := []struct {
+		name string
+		data []byte
+		want string
+	}{
+		{
+			name: "utf8",
+			data: []byte("abc"),
+			want: "abc",
+		},
+		{
+			name: "base64",
+			data: []byte{0xbd, 0xb2, 0x3d},
+			want: "[base64 encoded] vbI9",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sanitizeMessageForPrintout(tc.data)
+			if got != tc.want {
+				t.Errorf("sanitizeMessageForPrintout returned %s; want %s", got, tc.want)
+			}
+		})
+	}
+}
