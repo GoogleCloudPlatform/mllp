@@ -76,7 +76,7 @@ func ConfigureExport(ctx context.Context, cl *Client, cred string) error {
 	if err != nil {
 		return err
 	}
-	cl.labels["instance"], err = metadata.InstanceName()
+	cl.labels["instance"], err = metadata.InstanceID()
 	if err != nil {
 		return err
 	}
