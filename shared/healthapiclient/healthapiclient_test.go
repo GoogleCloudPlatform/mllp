@@ -33,15 +33,16 @@ import (
 )
 
 const (
-	projectID      = "123"
-	locationID     = "test-central1"
-	datasetID      = "456"
-	hl7V2StoreID   = "678"
-	msgID          = "890"
-	pathPrefix     = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/"
-	sendPath       = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages:ingest"
-	getPath        = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/890"
-	invalidErrResp = "invalid error response"
+	projectID             = "123"
+	locationID            = "test-central1"
+	datasetID             = "456"
+	hl7V2StoreID          = "678"
+	msgID                 = "890"
+	pathPrefix            = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/"
+	sendPath              = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages:ingest"
+	getPath               = "/v1/projects/123/locations/test-central1/datasets/456/hl7V2Stores/678/messages/890"
+	invalidErrResp        = "invalid error response"
+	rateLimitExceededResp = "too many requests response"
 )
 
 var (
@@ -84,18 +85,24 @@ func setUp() *httptest.Server {
 					return
 				}
 
+				data, err := json.Marshal(&sendMessageResp{Hl7Ack: cannedAck})
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+				if string(msgReq.Msg.Data) == rateLimitExceededResp {
+					w.WriteHeader(http.StatusTooManyRequests)
+					w.Write([]byte("{\"reason\":\"RATE_LIMIT_EXCEEDED\"}"))
+					return
+				}
+
 				if string(msgReq.Msg.Data) == invalidErrResp {
 					w.WriteHeader(http.StatusBadRequest)
 					w.Write([]byte("{"))
 					return
 				}
 				received = append(received, msgReq.Msg.Data)
-
-				data, err := json.Marshal(&sendMessageResp{Hl7Ack: cannedAck})
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
 
 				w.Write(data)
 			case getPath:
@@ -192,6 +199,7 @@ func TestSendError(t *testing.T) {
 		datasetID       string
 		hl7V2StoreID    string
 		msgs            [][]byte
+		expectedError   string
 		expectedMetrics map[string]int64
 	}{
 		{
@@ -200,6 +208,7 @@ func TestSendError(t *testing.T) {
 			datasetID,
 			hl7V2StoreID,
 			[][]byte{cannedMsg},
+			"response code 404",
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
 		{
@@ -208,6 +217,7 @@ func TestSendError(t *testing.T) {
 			"wrongdataset",
 			hl7V2StoreID,
 			[][]byte{cannedMsg},
+			"response code 404",
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
 		{
@@ -216,6 +226,7 @@ func TestSendError(t *testing.T) {
 			datasetID,
 			"wronghl7v2store",
 			[][]byte{cannedMsg},
+			"response code 404",
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
 		{
@@ -224,6 +235,16 @@ func TestSendError(t *testing.T) {
 			datasetID,
 			hl7V2StoreID,
 			[][]byte{[]byte(invalidErrResp)},
+			"unable to parse error response",
+			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
+		},
+		{
+			"too many requests response",
+			projectID,
+			datasetID,
+			hl7V2StoreID,
+			[][]byte{[]byte(rateLimitExceededResp)},
+			"response code 429",
 			map[string]int64{sentMetric: 1, sendErrorMetric: 1},
 		},
 	}
@@ -237,6 +258,9 @@ func TestSendError(t *testing.T) {
 				ack, err := c.Send(msg)
 				if err == nil {
 					t.Errorf("Expected send error but got %v", ack)
+				}
+				if !strings.Contains(err.Error(), tc.expectedError) {
+					t.Errorf("Got send error: %v, want it to contain: %v", err, tc.expectedError)
 				}
 			}
 			if len(received) != 0 {

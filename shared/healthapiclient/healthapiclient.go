@@ -145,6 +145,9 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	if err != nil {
 		c.metrics.Inc(sendErrorMetric)
 		if e, ok := err.(*googleapi.Error); ok {
+			if len(e.Body) == 0 {
+				return nil, e
+			}
 			nack, err := extractNACKFromErrorResponse([]byte(e.Body))
 			if err != nil {
 				return nil, err
@@ -157,6 +160,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 				return nack, nil
 			}
 		}
+		return nil, err
 	}
 
 	ack, err := base64.StdEncoding.DecodeString(resp.Hl7Ack)
