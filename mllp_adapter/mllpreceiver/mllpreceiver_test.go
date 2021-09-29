@@ -18,6 +18,7 @@ import (
 	"net"
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
@@ -32,10 +33,13 @@ var (
 
 type fakeSender struct {
 	msgs [][]byte
+	mu   sync.Mutex
 }
 
 func (s *fakeSender) Send(msg []byte) ([]byte, error) {
+	s.mu.Lock()
 	s.msgs = append(s.msgs, msg)
+	s.mu.Unlock()
 	return cannedAck, nil
 }
 
