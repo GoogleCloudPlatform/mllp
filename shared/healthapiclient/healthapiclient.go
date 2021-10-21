@@ -137,7 +137,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 		},
 	}
 	ctx := context.Background()
-	log.Infof("Sending message of size %v.", len(data))
+	log.Infof("Received message of size %v bytes. Sending this message to the Cloud Healthcare API HL7V2 Store.", len(data))
 	parent := util.GenerateHL7V2StoreName(c.projectID, c.locationID, c.datasetID, c.hl7V2StoreID)
 	ingest := c.storeService.Messages.Ingest(parent, req)
 	ingest.Header().Add("X-GOOG-API-FORMAT-VERSION", "2")
@@ -153,7 +153,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 				return nil, err
 			}
 			if nack != nil {
-				log.Errorf("Message was sent, received a NACK response.")
+				log.Errorf("Message was sent to the Cloud Healthcare API HL7V2 Store, received a NACK response.")
 				if c.logNACKedMsg {
 					log.Errorf("The original message was %s", sanitizeMessageForPrintout(data))
 				}
@@ -168,7 +168,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 		c.metrics.Inc(sendErrorMetric)
 		return nil, fmt.Errorf("unable to parse ACK response: %v", err)
 	}
-	log.Infof("Message was successfully sent.")
+	log.Infof("Message was successfully sent to the Cloud Healthcare API HL7V2 Store.")
 	return ack, nil
 }
 
@@ -220,7 +220,7 @@ func (c *HL7V2Client) Get(msgName string) ([]byte, error) {
 		return nil, fmt.Errorf("message name %v is not from expected HL7v2 store %v", msgName, c.hl7V2StoreID)
 	}
 
-	log.Infof("Started to fetch message.")
+	log.Infof("Started to fetch message from the Cloud Healthcare API HL7V2 Store")
 	resp, err := c.storeService.Messages.Get(msgName).Context(context.Background()).Do()
 	if err != nil {
 		c.metrics.Inc(fetchErrorMetric)
@@ -231,6 +231,6 @@ func (c *HL7V2Client) Get(msgName string) ([]byte, error) {
 		c.metrics.Inc(fetchErrorMetric)
 		return nil, fmt.Errorf("unable to parse data: %v", err)
 	}
-	log.Infof("Message was successfully fetched.")
+	log.Infof("Message was successfully fetched from the Cloud Healthcare API HL7V2 Store.")
 	return msg, nil
 }
