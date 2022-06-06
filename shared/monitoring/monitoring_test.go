@@ -15,106 +15,75 @@
 package monitoring
 
 import (
-	"context"
 	"testing"
-	"time"
 
-	metricpb "google.golang.org/genproto/googleapis/api/metric"
-	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
-	gax "github.com/googleapis/gax-go"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
-	"github.com/kylelemons/godebug/pretty"
-	tspb "github.com/golang/protobuf/ptypes"
+	"go.opencensus.io/metric/metricexport"
+	"go.opencensus.io/metric/test"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+	"contrib.go.opencensus.io/exporter/stackdriver"
 )
 
-type fakeClient struct {
-	req    []*monitoringpb.CreateTimeSeriesRequest
-	cancel context.CancelFunc
-	closed bool
-}
-
-func (c *fakeClient) CreateTimeSeries(ctx context.Context, req *monitoringpb.CreateTimeSeriesRequest, opts ...gax.CallOption) error {
-	c.req = append(c.req, req)
-	c.cancel()
-	return nil
-}
-
-func (c *fakeClient) Close() error {
-	c.closed = true
-	return nil
-}
-
 func TestClient(t *testing.T) {
-	timeNow = func() time.Time { return time.Date(2017, 4, 25, 15, 57, 46, 123456, time.UTC) }
-	now, err := tspb.TimestampProto(timeNow())
-	if err != nil {
-		t.Fatalf("TimeStampProto(): %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	fake := &fakeClient{cancel: cancel}
-	cl := &Client{
-		client:    fake,
+	cl := &ExportingClient{
 		projectID: "my-project-id",
-		labels: map[string]string{
-			"job":      "mllp_adapter",
-			"instance": "instance1",
-			"zone":     "zone1",
-		},
-		metrics: make(map[string]*metric),
+		labels:    &stackdriver.Labels{},
+		counters:  make(map[string]*stats.Int64Measure),
+		latencies: make(map[string]*stats.Float64Measure),
 	}
-	cl.NewInt64("test-metric")
-	cl.Inc("test-metric")
-	cl.Inc("test-metric")
-	cl.Inc("test-metric")
+	cl.labels.Set("job", "mllp_adapter", "")
+	cl.labels.Set("instance", "instance1", "")
+	cl.labels.Set("zone", "zone1", "")
 
-	want := &monitoringpb.CreateTimeSeriesRequest{
-		Name: "projects/my-project-id",
-		TimeSeries: []*monitoringpb.TimeSeries{
-			{
-				Metric: &metricpb.Metric{
-					Type: "custom.googleapis.com/cloud/healthcare/mllp/test-metric",
-					Labels: map[string]string{
-						"job":      "mllp_adapter",
-						"zone":     "zone1",
-						"instance": "instance1",
-					},
-				},
-				Resource: &monitoredrespb.MonitoredResource{
-					Type: "global",
-					Labels: map[string]string{
-						"project_id": "my-project-id",
-					},
-				},
-				MetricKind: metricpb.MetricDescriptor_CUMULATIVE,
-				ValueType:  metricpb.MetricDescriptor_INT64,
-				Points: []*monitoringpb.Point{{
-					Interval: &monitoringpb.TimeInterval{
-						StartTime: now,
-						EndTime:   now,
-					},
-					Value: &monitoringpb.TypedValue{
-						Value: &monitoringpb.TypedValue_Int64Value{
-							Int64Value: 3,
-						},
-					},
-				}},
-			}},
+	metricreader := metricexport.NewReader()
+	exporter := test.NewExporter(metricreader)
+
+	cl.NewCounter("test-counter", "")
+	cl.IncCounter("test-counter")
+	cl.IncCounter("test-counter")
+	cl.IncCounter("test-counter")
+
+	cl.NewLatency("test-latency", "")
+	cl.AddLatency("test-latency", 20)
+	cl.AddLatency("test-latency", 100)
+	cl.AddLatency("test-latency", 130)
+	exporter.ReadAndExport()
+
+	rows, err := view.RetrieveData(metricPrefix + "test-counter")
+	if err != nil || len(rows) == 0 {
+		t.Fatalf("Failed to get counter")
 	}
 
-	if err := cl.StartExport(ctx, 1, 1); err != nil {
-		t.Errorf("Run() returned an error: %v", err)
+	c, ok := rows[0].Data.(*view.CountData)
+	if !ok {
+		t.Errorf("want CountData, got %+v", rows[0].Data)
+	}
+	if c.Value != 3 {
+		t.Errorf("Wrong counter result, expected 3, got %v", c.Value)
 	}
 
-	if !fake.closed {
-		t.Errorf("Client not closed")
+	rows, err = view.RetrieveData(metricPrefix + "test-latency")
+	if err != nil || len(rows) == 0 {
+		t.Fatalf("Failed to get latency")
 	}
-	if len(fake.req) != 1 {
-		t.Errorf("Expected 1 request, got %v", len(fake.req))
+	d, ok := rows[0].Data.(*view.DistributionData)
+	if !ok {
+		t.Errorf("want DistributionData, got %+v", rows[0].Data)
 	}
-	got := fake.req[0]
-	if diff := pretty.Compare(want, got); diff != "" {
-		t.Errorf("unexpected response, got: \n%v\n, want: \n%v\n, diff (-want +got): \n%v\n", got, want, diff)
+
+	wantDistribution := &view.DistributionData{
+		Count:           3,
+		Mean:            83.33333333333333,
+		SumOfSquaredDev: 6466.666666666667,
+	}
+	//gotDistribution := d.Value.(*metricdata.Distribution)
+	if d.Count != wantDistribution.Count {
+		t.Errorf("Unexpected distribution, expecting Count = %v, got Count = %v", wantDistribution.Count, d.Count)
+	}
+	if d.Mean != wantDistribution.Mean {
+		t.Errorf("Unexpected distribution, expecting Mean = %v, got Mean = %v", wantDistribution.Mean, d.Mean)
+	}
+	if d.SumOfSquaredDev != wantDistribution.SumOfSquaredDev {
+		t.Errorf("Unexpected distribution, expecting SumOfSquaredDev = %v, got SumOfSquaredDev = %v", wantDistribution.SumOfSquaredDev, d.SumOfSquaredDev)
 	}
 }

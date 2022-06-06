@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"google.golang.org/api/option"
-	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 	"github.com/GoogleCloudPlatform/mllp/shared/testingutil"
 	"github.com/GoogleCloudPlatform/mllp/shared/util"
 
@@ -132,7 +131,7 @@ func newHL7V2Client(client *http.Client, apiAddrPrefix, projectID, locationID, d
 	s, _ := healthcare.NewService(context.Background(), option.WithHTTPClient(client))
 	s.BasePath = apiAddrPrefix
 	c := &HL7V2Client{
-		metrics:      monitoring.NewClient(),
+		metrics:      testingutil.NewFakeMonitoringClient(),
 		storeService: s.Projects.Locations.Datasets.Hl7V2Stores,
 		projectID:    projectID,
 		locationID:   locationID,
@@ -175,6 +174,7 @@ func TestSend(t *testing.T) {
 			s := setUp()
 			defer s.Close()
 			c := newHL7V2Client(s.Client(), s.URL, tc.projectID, locationID, tc.datasetID, tc.hl7V2StoreID)
+			c.metrics = testingutil.NewFakeMonitoringClient()
 			for _, msg := range tc.msgs {
 				ack, err := c.Send(msg)
 				if err != nil {
@@ -187,7 +187,7 @@ func TestSend(t *testing.T) {
 			if !reflect.DeepEqual(tc.msgs, received) {
 				t.Errorf("Messages differ: expected %v but got %v", tc.msgs, received)
 			}
-			testingutil.CheckMetrics(t, c.metrics, tc.expectedMetrics)
+			testingutil.CheckMetrics(t, c.metrics.(*testingutil.FakeMonitoringClient), tc.expectedMetrics)
 		})
 	}
 }
@@ -254,6 +254,7 @@ func TestSendError(t *testing.T) {
 			s := setUp()
 			defer s.Close()
 			c := newHL7V2Client(s.Client(), s.URL, tc.projectID, locationID, tc.datasetID, tc.hl7V2StoreID)
+			c.metrics = testingutil.NewFakeMonitoringClient()
 			for _, msg := range tc.msgs {
 				ack, err := c.Send(msg)
 				if err == nil {
@@ -266,7 +267,7 @@ func TestSendError(t *testing.T) {
 			if len(received) != 0 {
 				t.Errorf("Unexpected messages received: %v", received)
 			}
-			testingutil.CheckMetrics(t, c.metrics, tc.expectedMetrics)
+			testingutil.CheckMetrics(t, c.metrics.(*testingutil.FakeMonitoringClient), tc.expectedMetrics)
 		})
 	}
 }
@@ -276,6 +277,7 @@ func TestGet(t *testing.T) {
 	defer s.Close()
 	toSend = map[string][]byte{msgID: cannedMsg}
 	c := newHL7V2Client(s.Client(), s.URL, projectID, locationID, datasetID, hl7V2StoreID)
+	c.metrics = testingutil.NewFakeMonitoringClient()
 	msg, err := c.Get(util.GenerateHL7V2MessageName(projectID, locationID, datasetID, hl7V2StoreID, msgID))
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -284,7 +286,7 @@ func TestGet(t *testing.T) {
 		t.Errorf("Expected msg %v but got %v", cannedMsg, msg)
 	}
 	expectedMetrics := map[string]int64{fetchedMetric: 1, fetchErrorMetric: 0, fetchErrorInternalMetric: 0}
-	testingutil.CheckMetrics(t, c.metrics, expectedMetrics)
+	testingutil.CheckMetrics(t, c.metrics.(*testingutil.FakeMonitoringClient), expectedMetrics)
 }
 
 func TestGetError(t *testing.T) {
@@ -324,11 +326,12 @@ func TestGetError(t *testing.T) {
 			s := setUp()
 			defer s.Close()
 			c := newHL7V2Client(s.Client(), s.URL, projectID, locationID, datasetID, hl7V2StoreID)
+			c.metrics = testingutil.NewFakeMonitoringClient()
 			msg, err := c.Get(tc.msgName)
 			if err == nil {
 				t.Errorf("Expected error but got %v", msg)
 			}
-			testingutil.CheckMetrics(t, c.metrics, tc.expectedMetrics)
+			testingutil.CheckMetrics(t, c.metrics.(*testingutil.FakeMonitoringClient), tc.expectedMetrics)
 		})
 	}
 }

@@ -20,5 +20,4 @@ go_library(
     name = "go_default_library",
     srcs = ["testingutil.go"],
     importpath = "github.com/GoogleCloudPlatform/mllp/shared/testingutil",
-    deps = ["//shared/monitoring:go_default_library"],
 )

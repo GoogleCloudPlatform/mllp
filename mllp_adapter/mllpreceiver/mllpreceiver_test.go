@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
-	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
+	"github.com/GoogleCloudPlatform/mllp/shared/testingutil"
 )
 
 var (
@@ -45,7 +45,7 @@ func (s *fakeSender) Send(msg []byte) ([]byte, error) {
 
 func setUp(t *testing.T) (*fakeSender, *MLLPReceiver) {
 	s := &fakeSender{}
-	mt := monitoring.NewClient()
+	mt := testingutil.NewFakeMonitoringClient()
 	r, err := NewReceiver("0.0.0.0", 0, s, mt)
 	// We want to be notified of closed connections.
 	r.connClosed = make(chan struct{})
@@ -178,8 +178,8 @@ func Test3SimultanousConnections(t *testing.T) {
 	if !reflect.DeepEqual(expected, s.msgs) {
 		t.Fatalf("Messages differ: expected %v but got %v", expected, s.msgs)
 	}
-	if r.metrics.Value(reconnectsMetric) != 3 {
-		t.Fatalf("Expected 3 reconnects but got %v", r.metrics.Value(reconnectsMetric))
+	if r.metrics.(*testingutil.FakeMonitoringClient).CounterValue(reconnectsMetric) != 3 {
+		t.Fatalf("Expected 3 reconnects but got %v", r.metrics.(*testingutil.FakeMonitoringClient).CounterValue(reconnectsMetric))
 	}
 }
 
@@ -199,8 +199,8 @@ func TestMessageStats(t *testing.T) {
 
 	metrics := []string{readsMetric, handleMessagesMetric, writesMetric}
 	for _, m := range metrics {
-		if r.metrics.Value(m) != 1 {
-			t.Errorf("Expected %v = 1 but got %v", m, r.metrics.Value(m))
+		if r.metrics.(*testingutil.FakeMonitoringClient).CounterValue(m) != 1 {
+			t.Errorf("Expected %v = 1 but got %v", m, r.metrics.(*testingutil.FakeMonitoringClient).CounterValue(m))
 		}
 	}
 }

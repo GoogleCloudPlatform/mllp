@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
-	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 	"github.com/GoogleCloudPlatform/mllp/shared/testingutil"
 )
 
@@ -30,9 +29,9 @@ var (
 	cannedAck = []byte("ack")
 )
 
-func setUp() (*net.TCPListener, *MLLPSender, *monitoring.Client) {
+func setUp() (*net.TCPListener, *MLLPSender, *testingutil.FakeMonitoringClient) {
 	l, _ := net.Listen("tcp", "0.0.0.0:0")
-	metrics := monitoring.NewClient()
+	metrics := testingutil.NewFakeMonitoringClient()
 	sender := NewSender(net.JoinHostPort("localhost", strconv.Itoa(l.Addr().(*net.TCPAddr).Port)), metrics)
 	return l.(*net.TCPListener), sender, metrics
 }

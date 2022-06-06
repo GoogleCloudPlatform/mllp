@@ -19,197 +19,158 @@ package monitoring
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 
 	log "github.com/golang/glog"
 	"cloud.google.com/go/compute/metadata"
-	"cloud.google.com/go/monitoring/apiv3"
-	gax "github.com/googleapis/gax-go"
 	"google.golang.org/api/option"
 	"github.com/google/uuid"
 	"github.com/GoogleCloudPlatform/mllp/shared/util"
 
-	metricpb "google.golang.org/genproto/googleapis/api/metric"
-	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
 	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
-	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
-	tspb "github.com/golang/protobuf/ptypes"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+	"contrib.go.opencensus.io/exporter/stackdriver"
 )
 
 const scope = "https://www.googleapis.com/auth/monitoring.write"
+const metricPrefix = "custom.googleapis.com/cloud/healthcare/mllp/"
 
-// timeNow is used for testing.
-var timeNow = time.Now
-
-type metricClient interface {
-	CreateTimeSeries(ctx context.Context, req *monitoringpb.CreateTimeSeriesRequest, opts ...gax.CallOption) error
-	Close() error
+// Client interface provides basic functionality to create, record and retrieve metric values
+type Client interface {
+	IncCounter(name string)
+	NewCounter(name, desc string)
+	AddLatency(name string, value float64)
+	NewLatency(name, desc string)
 }
 
-// NewClient returns a client that can be used for creating, incrementing, and
-// retrieving metrics but not for exporting them.
-func NewClient() *Client {
-	return &Client{metrics: make(map[string]*metric), labels: make(map[string]string)}
+// NewExportingClient returns a client that can export to metrics to Cloud Monitoring.
+func NewExportingClient() *ExportingClient {
+	return &ExportingClient{
+		labels:    &stackdriver.Labels{},
+		counters:  make(map[string]*stats.Int64Measure),
+		latencies: make(map[string]*stats.Float64Measure)}
 }
 
-// ConfigureExport prepares a Client for exporting metrics. It fetches metadata
-// about the GCP environment and fails if not running on GCE or GKE.
-func ConfigureExport(ctx context.Context, cl *Client, cred string) error {
+// ExportingClient represents a client that exports to Cloud Monitoring
+type ExportingClient struct {
+	projectID string
+	labels    *stackdriver.Labels
+	exporter  *stackdriver.Exporter
+
+	// mu guards metrics.  The other fields are immutable
+	mu        sync.RWMutex
+	counters  map[string]*stats.Int64Measure
+	latencies map[string]*stats.Float64Measure
+}
+
+// IncCounter increases a counter metric or does nothing if the client is nil.
+func (m *ExportingClient) IncCounter(name string) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	ctx := context.Background()
+	stats.Record(ctx, m.counters[name].M(1))
+}
+
+// NewCounter creates a new counter metrics or does nothing if the client is nil.
+func (m *ExportingClient) NewCounter(name, description string) {
+	if m == nil {
+		return
+	}
+	m.counters[name] = stats.Int64(name, description, stats.UnitDimensionless)
+	v := &view.View{
+		Name:        metricPrefix + name,
+		Measure:     m.counters[name],
+		Aggregation: view.Count(),
+	}
+	if err := view.Register(v); err != nil {
+		log.Errorf("Failed to register the view: %v", err)
+	}
+}
+
+// AddLatency adds a latency metric or does nothing if the client is nil.
+func (m *ExportingClient) AddLatency(name string, value float64) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	ctx := context.Background()
+	stats.Record(ctx, m.latencies[name].M(value))
+}
+
+// NewLatency creates a new latency metrics or does nothing if the client is nil.
+func (m *ExportingClient) NewLatency(name, description string) {
+	if m == nil {
+		return
+	}
+	m.latencies[name] = stats.Float64(name, description, stats.UnitMilliseconds)
+	v := &view.View{
+		Name:    metricPrefix + name,
+		Measure: m.latencies[name],
+		// Latency in buckets:
+		// [>=0ms, >=50ms, >=100ms, >=200ms, >=400ms, >=1s, >=2s, >=4s]
+		Aggregation: view.Distribution(0, 50, 100, 200, 400, 1000, 2000, 4000),
+	}
+	if err := view.Register(v); err != nil {
+		log.Errorf("Failed to register the view: %v", err)
+	}
+}
+
+// StartExport metrics to the monitoring service roughly once a minute.
+// It fetches metadata about the GCP environment and fails if not
+// running on GCE or GKE.
+func (m *ExportingClient) StartExport(ctx context.Context, cred string) error {
 	if !metadata.OnGCE() {
 		return fmt.Errorf("not running on GCE - metrics cannot be exported")
 	}
+	var err error
 	ts, err := util.TokenSource(ctx, cred, scope)
 	if err != nil {
 		return fmt.Errorf("getting default token source: %v", err)
 	}
-	cl.client, err = monitoring.NewMetricClient(ctx, option.WithTokenSource(ts))
+	m.projectID, err = metadata.ProjectID()
 	if err != nil {
 		return err
 	}
-	cl.projectID, err = metadata.ProjectID()
+	zone, err := metadata.Zone()
 	if err != nil {
 		return err
 	}
-	cl.labels["zone"], err = metadata.Zone()
+	m.labels.Set("zone", zone, "")
+
+	instance, err := metadata.InstanceID()
 	if err != nil {
 		return err
 	}
-	cl.labels["instance"], err = metadata.InstanceID()
-	if err != nil {
-		return err
-	}
-	cl.labels["job"] = "mllp_adapter"
+	m.labels.Set("instance", instance, "")
+	m.labels.Set("job", "mllp_adapter", "")
 	// Use uuid to prevent multiple mllp adapter instances from submitting
 	// metrics with the same label.
 	id := uuid.New().String()
-	cl.labels["id"] = id
-	log.Infof(`Exporting stackdriver matrics with label "id"=%q`, id)
-	return nil
-}
+	m.labels.Set("id", id, "")
+	log.Infof(`Exporting stackdriver metrics with label "id"=%q`, id)
 
-// Client exports metrics to the Cloud Monitoring Service.
-type Client struct {
-	client    metricClient
-	projectID string
-	labels    map[string]string
-
-	// mu guards metrics.  The other fields are immutable
-	mu      sync.RWMutex
-	metrics map[string]*metric
-}
-
-// Inc increments a metric or does nothing if the client is nil.
-func (m *Client) Inc(name string) {
-	if m == nil {
-		return
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.metrics[name].value++
-}
-
-// Value gets the value of a metric or returns 0 if the client is nil.
-func (m *Client) Value(name string) int64 {
-	if m == nil {
-		return 0
-	}
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.metrics[name].value
-}
-
-// NewInt64 creates a new cumulative int64 metric with the given name or does
-// nothing if the client is nil.  If the same name is used multiple times, only
-// the last returned Metric is exported.
-func (m *Client) NewInt64(name string) {
-	if m == nil {
-		return
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	startTime, err := tspb.TimestampProto(timeNow())
+	exporter, err := stackdriver.NewExporter(stackdriver.Options{
+		ReportingInterval:       1 * time.Minute,
+		DefaultMonitoringLabels: m.labels,
+		MonitoringClientOptions: []option.ClientOption{option.WithTokenSource(ts)},
+	})
 	if err != nil {
-		log.Fatalf("Invalid timestamp: %v", err)
-		return
+		return fmt.Errorf("failed to create stackdriver exporter: %v", err)
 	}
-	m.metrics[name] = &metric{startTime: startTime}
+	m.exporter = exporter
+	return m.exporter.StartMetricsExporter()
 }
 
-// Run sends the metrics to the monitoring service roughly once a minute.
-func (m *Client) StartExport(ctx context.Context, minStartDelay int, startDelayInterval int) error {
-	// Use a variable delay so that processes starting at the same time
-	// don't publish data at the same time. The initial delay is between
-	// minStartDelay and minStartDelay+startDelayInterval seconds. Then, the
-	// delay becomes 1 minute.
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	delay := time.Duration(minStartDelay+r.Intn(startDelayInterval)) * time.Second
-	for {
-		select {
-		case <-time.After(delay):
-			delay = time.Minute
-		case <-ctx.Done():
-			return m.client.Close()
-		}
-		req := m.makeCreateTimeSeriesRequest()
-		if req == nil {
-			continue
-		}
-		if err := m.client.CreateTimeSeries(ctx, req); err != nil {
-			log.Errorf("CreateTimeSeries failed: %v", err)
-		}
-	}
-}
-
-func (m *Client) makeCreateTimeSeriesRequest() *monitoringpb.CreateTimeSeriesRequest {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	if len(m.metrics) == 0 {
-		return nil
-	}
-
-	now, err := tspb.TimestampProto(timeNow())
-	if err != nil {
-		log.Errorf("Invalid timestamp: %v", err)
-		return nil
-	}
-	req := &monitoringpb.CreateTimeSeriesRequest{
-		Name: monitoring.MetricProjectPath(m.projectID),
-	}
-	for k, v := range m.metrics {
-		dataPoint := &monitoringpb.Point{
-			Interval: &monitoringpb.TimeInterval{
-				StartTime: v.startTime,
-				EndTime:   now,
-			},
-			Value: &monitoringpb.TypedValue{
-				Value: &monitoringpb.TypedValue_Int64Value{
-					Int64Value: v.value,
-				},
-			},
-		}
-		ts := &monitoringpb.TimeSeries{
-			Metric: &metricpb.Metric{
-				Type:   "custom.googleapis.com/cloud/healthcare/mllp/" + k,
-				Labels: m.labels,
-			},
-			Resource: &monitoredrespb.MonitoredResource{
-				Type: "global",
-				Labels: map[string]string{
-					"project_id": m.projectID,
-				},
-			},
-			MetricKind: metricpb.MetricDescriptor_CUMULATIVE,
-			ValueType:  metricpb.MetricDescriptor_INT64,
-			Points: []*monitoringpb.Point{
-				dataPoint,
-			},
-		}
-		req.TimeSeries = append(req.TimeSeries, ts)
-	}
-	return req
+// EndExport must be called to ensure all metrics are exported
+func (m *ExportingClient) EndExport(ctx context.Context) {
+	m.exporter.StopMetricsExporter()
+	m.exporter.Flush()
 }
 
 // metric is a numeric value that is exported to the monitoring service.

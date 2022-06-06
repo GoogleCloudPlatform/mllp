@@ -59,25 +59,20 @@ func main() {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
-
-	select {}
 }
 
 func run() error {
 	ctx := context.Background()
 
-	var mon *monitoring.Client
+	var mon monitoring.Client
 	if *exportStats {
-		mon = monitoring.NewClient()
-		if err := monitoring.ConfigureExport(ctx, mon, *credentials); err != nil {
+		mon = monitoring.NewExportingClient()
+		if err := mon.(*monitoring.ExportingClient).StartExport(ctx, *credentials); err != nil {
 			return fmt.Errorf("failed to configure monitoring: %v", err)
 		}
-		// Initial export delay is between 45 and 45+30 seconds
-		go func() {
-			err := mon.StartExport(ctx, 45, 30)
-			log.Errorf("MLLP Adapter: failed to start export to monitoring service: %v", err)
-			os.Exit(1)
-		}()
+
+		defer mon.(*monitoring.ExportingClient).EndExport(ctx)
+
 	}
 
 	if *apiAddrPrefix != "" {
@@ -116,5 +111,5 @@ func run() error {
 		}
 	}()
 
-	return nil
+	select {}
 }

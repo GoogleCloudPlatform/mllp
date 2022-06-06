@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 	"github.com/GoogleCloudPlatform/mllp/shared/testingutil"
 )
 
@@ -129,9 +128,9 @@ func TestHandle(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mt := monitoring.NewClient()
+			fc := testingutil.NewFakeMonitoringClient()
 			fetcher := &fakeFetcher{msgs: map[string][]byte{msgName: msgBytes}}
-			handler := New(mt, fetcher, tc.sender, tc.checkPublish)
+			handler := New(fc, fetcher, tc.sender, tc.checkPublish)
 			handler.Handle(tc.msg)
 
 			if !bytes.Equal(tc.sender.msgSent, tc.sentMsgExpected) {
@@ -140,7 +139,7 @@ func TestHandle(t *testing.T) {
 			if tc.msg.acked != tc.ackExpected {
 				t.Errorf("Expected ack status %v, got %v", tc.ackExpected, tc.msg.acked)
 			}
-			testingutil.CheckMetrics(t, mt, tc.expectedMetrics)
+			testingutil.CheckMetrics(t, fc, tc.expectedMetrics)
 		})
 	}
 }

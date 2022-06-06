@@ -46,7 +46,7 @@ const (
 
 // HL7V2Client represents a client of the HL7v2 API.
 type HL7V2Client struct {
-	metrics      *monitoring.Client
+	metrics      monitoring.Client
 	storeService *healthcare.ProjectsLocationsDatasetsHl7V2StoresService
 	projectID    string
 	locationID   string
@@ -64,7 +64,7 @@ type sendMessageErrorResp struct {
 }
 
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
-func NewHL7V2Client(ctx context.Context, cred string, metrics *monitoring.Client, projectID, locationID, datasetID, hl7V2StoreID string, logNACKedMsg bool) (*HL7V2Client, error) {
+func NewHL7V2Client(ctx context.Context, cred string, metrics monitoring.Client, projectID, locationID, datasetID, hl7V2StoreID string, logNACKedMsg bool) (*HL7V2Client, error) {
 	if err := validatesComponents(projectID, locationID, datasetID, hl7V2StoreID); err != nil {
 		return nil, err
 	}
@@ -88,11 +88,11 @@ func NewHL7V2Client(ctx context.Context, cred string, metrics *monitoring.Client
 }
 
 func (c *HL7V2Client) initMetrics() {
-	c.metrics.NewInt64(sentMetric)
-	c.metrics.NewInt64(sendErrorMetric)
-	c.metrics.NewInt64(fetchedMetric)
-	c.metrics.NewInt64(fetchErrorMetric)
-	c.metrics.NewInt64(fetchErrorInternalMetric)
+	c.metrics.NewCounter(sentMetric, "Number of HL7 messages sent to HL7 store.")
+	c.metrics.NewCounter(sendErrorMetric, "Number of errors when sending HL7 message to HL7 store.")
+	c.metrics.NewCounter(fetchedMetric, "Number of HL7 messages fetched from HL7 Store.")
+	c.metrics.NewCounter(fetchErrorMetric, "Number of errors when fetching HL7 message from HL7 Store.")
+	c.metrics.NewCounter(fetchErrorInternalMetric, "Number of adapter internal errors when fetching HL7 message from HL7 Store.")
 }
 
 func validatesComponents(projectID, locationID, datasetID, storeID string) error {
@@ -129,7 +129,7 @@ func initHL7v2StoreService(ctx context.Context, cred string) (*healthcare.Projec
 // Send sends a message to the endpoint and returns the ACK/NACK response.
 // Returns an error if the request fails without a NACK response.
 func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
-	c.metrics.Inc(sentMetric)
+	c.metrics.IncCounter(sentMetric)
 
 	req := &healthcare.IngestMessageRequest{
 		Message: &healthcare.Message{
@@ -143,7 +143,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	ingest.Header().Add("X-GOOG-API-FORMAT-VERSION", "2")
 	resp, err := ingest.Context(ctx).Do()
 	if err != nil {
-		c.metrics.Inc(sendErrorMetric)
+		c.metrics.IncCounter(sendErrorMetric)
 		if e, ok := err.(*googleapi.Error); ok {
 			if len(e.Body) == 0 {
 				return nil, e
@@ -165,7 +165,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 
 	ack, err := base64.StdEncoding.DecodeString(resp.Hl7Ack)
 	if err != nil {
-		c.metrics.Inc(sendErrorMetric)
+		c.metrics.IncCounter(sendErrorMetric)
 		return nil, fmt.Errorf("unable to parse ACK response: %v", err)
 	}
 	log.Infof("Message was successfully sent to the Cloud Healthcare API HL7V2 Store.")
@@ -197,38 +197,38 @@ func extractNACKFromErrorResponse(resp []byte) ([]byte, error) {
 // Get retrieves a message from the server.
 // Returns an error if the request fails.
 func (c *HL7V2Client) Get(msgName string) ([]byte, error) {
-	c.metrics.Inc(fetchedMetric)
+	c.metrics.IncCounter(fetchedMetric)
 	projectID, locationID, datasetID, hl7V2StoreID, _, err := util.ParseHL7V2MessageName(msgName)
 	if err != nil {
-		c.metrics.Inc(fetchErrorInternalMetric)
+		c.metrics.IncCounter(fetchErrorInternalMetric)
 		return nil, fmt.Errorf("parsing message name: %v", err)
 	}
 	if projectID != c.projectID {
-		c.metrics.Inc(fetchErrorInternalMetric)
+		c.metrics.IncCounter(fetchErrorInternalMetric)
 		return nil, fmt.Errorf("message name %v is not from expected project %v", msgName, c.projectID)
 	}
 	if locationID != c.locationID {
-		c.metrics.Inc(fetchErrorInternalMetric)
+		c.metrics.IncCounter(fetchErrorInternalMetric)
 		return nil, fmt.Errorf("message name %v is not from expected location %v", msgName, c.locationID)
 	}
 	if datasetID != c.datasetID {
-		c.metrics.Inc(fetchErrorInternalMetric)
+		c.metrics.IncCounter(fetchErrorInternalMetric)
 		return nil, fmt.Errorf("message name %v is not from expected dataset %v", msgName, c.datasetID)
 	}
 	if hl7V2StoreID != c.hl7V2StoreID {
-		c.metrics.Inc(fetchErrorInternalMetric)
+		c.metrics.IncCounter(fetchErrorInternalMetric)
 		return nil, fmt.Errorf("message name %v is not from expected HL7v2 store %v", msgName, c.hl7V2StoreID)
 	}
 
 	log.Infof("Started to fetch message from the Cloud Healthcare API HL7V2 Store")
 	resp, err := c.storeService.Messages.Get(msgName).Context(context.Background()).Do()
 	if err != nil {
-		c.metrics.Inc(fetchErrorMetric)
+		c.metrics.IncCounter(fetchErrorMetric)
 		return nil, fmt.Errorf("failed to fetch message: %v", err)
 	}
 	msg, err := base64.StdEncoding.DecodeString(resp.Data)
 	if err != nil {
-		c.metrics.Inc(fetchErrorMetric)
+		c.metrics.IncCounter(fetchErrorMetric)
 		return nil, fmt.Errorf("unable to parse data: %v", err)
 	}
 	log.Infof("Message was successfully fetched from the Cloud Healthcare API HL7V2 Store.")

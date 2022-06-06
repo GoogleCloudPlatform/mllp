@@ -35,7 +35,6 @@ go_test(
     srcs = ["healthapiclient_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//shared/monitoring:go_default_library",
         "//shared/testingutil:go_default_library",
         "//shared/util:go_default_library",
         "@org_golang_google_api//healthcare/v1:go_default_library",

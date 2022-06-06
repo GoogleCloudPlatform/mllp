@@ -16,27 +16,30 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "7b9bbe3ea1fccb46dcfa6c3f3e29ba7ec740d8733370e21cdc8937467b4a4349",
+    sha256 = "ab21448cef298740765f33a7f5acee0607203e4ea321219f2a4c85a6e0fb0a27",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.22.4/rules_go-v0.22.4.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.22.4/rules_go-v0.22.4.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.32.0/rules_go-v0.32.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.32.0/rules_go-v0.32.0.zip",
     ],
 )
 
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "d8c45ee70ec39a57e7a05e5027c32b1576cc7f16d9dd37135b0eddde45cf1b10",
+    sha256 = "62ca106be173579c0a167deb23358fdfe71ffa1e4cfdddf5582af26520f1c66f",
     urls = [
-        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/v0.20.0/bazel-gazelle-v0.20.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.20.0/bazel-gazelle-v0.20.0.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
     ],
 )
 
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "9748c0d90e54ea09e5e75fb7fac16edce15d2028d4356f32211cfa3c0e956564",
-    strip_prefix = "protobuf-3.11.4",
-    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.11.4.zip"],
+    sha256 = "d0f5f605d0d656007ce6c8b5a82df3037e1d8fe8b121ed42e536f569dec16113",
+    strip_prefix = "protobuf-3.14.0",
+    urls = [
+        "https://mirror.bazel.build/github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz",
+        "https://github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz",
+    ],
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
@@ -47,7 +50,7 @@ load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_to
 
 go_rules_dependencies()
 
-go_register_toolchains()
+go_register_toolchains(version = "1.18.2")
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
@@ -55,26 +58,31 @@ gazelle_dependencies()
 
 go_repository(
     name = "io_opencensus_go",
-    commit = "46dfec7deb6e8c5d4a46f355c0da7c6d6dc59ba4",
     importpath = "go.opencensus.io",
+    sum = "h1:gqCw0LfLxScz8irSi8exQc7fyQ0fKQU/qnC/X8+V/1M=",
+    version = "v0.23.0",
 )
 
 go_repository(
     name = "org_golang_google_grpc",
-    commit = "f67e7c03dcbcfc81906f302a87ab0d400738877d",
     importpath = "google.golang.org/grpc",
+    sum = "h1:c+E5hkHV2oYLLcjZ0Uulu4thvOFKB0a9TWvowIWqgu4=",
+    version = "v1.39.0-dev.0.20210518002758-2713b77e8526",
 )
 
 go_repository(
-    name = "org_golang_google_api",
-    commit = "c8cf5cff125e500044b60204f230024dcc49c3a3",
+    name = "io_opencensus_go_contrib_exporter_stackdriver",
+    sum = "h1:lIFYmQsqejvlq+GobFUbC5F0prD5gvhP6r0gWLZRDq4=",
+    version = "v0.13.8",
+    importpath = "contrib.go.opencensus.io/exporter/stackdriver",
+)
+
+go_repository(
+   name = "org_golang_google_api",
     importpath = "google.golang.org/api",
-)
-
-go_repository(
-    name = "org_golang_google_genproto",
-    commit = "fb6d0575620bc914112d1a67d55ba8c090b1aa11",
-    importpath = "google.golang.org/genproto",
+    sum = "h1:MDkAbYIB1JpSgCTOCYYoIec/coMlKK4oVbpnBLLcyT0=",
+    version = "v0.58.0",
+    build_file_proto_mode = "disable_global",
 )
 
 go_repository(
@@ -85,14 +93,66 @@ go_repository(
 
 go_repository(
     name = "com_google_cloud_go",
-    commit = "6416cc735b86e81cff3f558da87aee244e204472",
     importpath = "cloud.google.com/go",
+    sum = "h1:y/cM2iqGgGi5D5DQZl6D9STN/3dR/Vx5Mp8s752oJTY=",
+    version = "v0.99.0",
+)
+
+go_repository(
+    name = "com_google_cloud_go_monitoring",
+    importpath = "cloud.google.com/go/monitoring",
+    sum = "h1:BbbME861YCj/jJnvO/gVcPmqqjfGhiGgFu3DFeP09yU=",
+    version = "v1.0.0",
+)
+
+go_repository(
+    name = "com_google_cloud_go_pubsub",
+    importpath = "cloud.google.com/go/pubsub",
+    sum = "h1:ukjixP1wl0LpnZ6LWtZJ0mX5tBmjp1f8Sqer8Z2OMUU=",
+    version = "v1.3.1",
+)
+
+go_repository(
+    name = "com_google_cloud_go_trace",
+    importpath = "cloud.google.com/go/trace",
+    sum = "h1:laKx2y7IWMjguCe5zZx6n7qLtREk4kyE69SXVC0VSN8=",
+    version = "v1.0.0",
+)
+
+go_repository(
+    name = "com_github_census_instrumentation_opencensus_proto",
+    importpath = "github.com/census-instrumentation/opencensus-proto",
+    sum = "h1:glEXhBS5PSLLv4IXzLA5yPRVX4bilULVyxxbrfOtDAk=",
+    version = "v0.2.1",
+    build_extra_args = ["-exclude=src"],  # See https://github.com/census-instrumentation/opencensus-proto/issues/200
+)
+
+go_repository(
+    name = "com_github_aws_aws_sdk_go",
+    importpath = "github.com/aws/aws-sdk-go",
+    sum = "h1:m45+Ru/wA+73cOZXiEGLDH2d9uLN3iHqMc0/z4noDXE=",
+    version = "v1.15.11",
+)
+
+go_repository(
+    name = "com_github_go_ini_ini",
+    importpath = "github.com/go-ini/ini",
+    sum = "h1:Mujh4R/dH6YL8bxuISne3xX2+qcQ9p0IxKAP6ExWoUo=",
+    version = "v1.25.4",
+)
+
+go_repository(
+   name = "com_github_jmespath_go_jmespath",
+    importpath = "github.com/jmespath/go-jmespath",
+    sum = "h1:SMvOWPJCES2GdFracYbBQh93GXac8fq7HeN6JnpduB8=",
+    version = "v0.0.0-20160803190731-bd40a432e4c7",
 )
 
 go_repository(
     name = "org_golang_x_oauth2",
-    commit = "bf48bf16ab8d622ce64ec6ce98d2c98f916b6303",
     importpath = "golang.org/x/oauth2",
+    sum = "h1:B333XXssMuKQeBwiNODx4TupZy7bf4sxFZnN2ZOcvUE=",
+    version = "v0.0.0-20211005180243-6b3c2da341f1",
 )
 
 go_repository(
@@ -103,8 +163,9 @@ go_repository(
 
 go_repository(
     name = "org_golang_x_net",
-    commit = "d3edc9973b7eb1fb302b0ff2c62357091cea9a30",
     importpath = "golang.org/x/net",
+    sum = "h1:qOfNqBm5gk93LjGZo1MJaKY6Bph39zOKz1Hz2ogHj1w=",
+    version = "v0.0.0-20211011170408-caeb26a5c8c0",
 )
 
 go_repository(
@@ -115,8 +176,9 @@ go_repository(
 
 go_repository(
     name = "com_github_golang_groupcache",
-    commit = "8c9f03a8e57eb486e42badaed3fb287da51807ba",
     importpath = "github.com/golang/groupcache",
+    sum = "h1:ZgQEtGgCBiWRM39fZuwSd1LwSqqSW0hOdXCYYDX0R3I=",
+    version = "v0.0.0-20190702054246-869f871628b6",
 )
 
 go_repository(
@@ -142,7 +204,6 @@ go_repository(
     commit = "0e4e31197428a347842d152773b4cace4645ca25",
     importpath = "github.com/google/uuid",
 )
-
 http_archive(
     name = "io_bazel_rules_docker",
     sha256 = "4521794f0fba2e20f3bf15846ab5e01d5332e587e9ce81629c7f96c793bb7036",

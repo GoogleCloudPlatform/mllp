@@ -17,16 +17,19 @@
 package handler
 
 import (
+	"time"
+
 	log "github.com/golang/glog"
 	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 	"github.com/GoogleCloudPlatform/mllp/shared/pubsub"
 )
 
-const (
-	fetchErrorMetric = "pubsub-messages-fetch-error"
-	sendErrorMetric  = "pubsub-messages-send-error"
-	processedMetric  = "pubsub-messages-processed"
-	ignoredMetric    = "pubsub-messages-ignored"
+var (
+	fetchErrorMetric    = "pubsub-messages-fetch-error"
+	sendErrorMetric     = "pubsub-messages-send-error"
+	processedMetric     = "pubsub-messages-processed"
+	ignoredMetric       = "pubsub-messages-ignored"
+	handleLatencyMetric = "pubsub-message-process-latency"
 )
 
 // Fetcher fetches messages from HL7v2 stores.
@@ -41,18 +44,19 @@ type Sender interface {
 
 // Handler represents a message handler.
 type Handler struct {
-	metrics               *monitoring.Client
+	metrics               monitoring.Client
 	f                     Fetcher
 	s                     Sender
 	checkPublishAttribute bool
 }
 
 // New creates a new message handler.
-func New(m *monitoring.Client, f Fetcher, s Sender, checkPublishAttribute bool) *Handler {
-	m.NewInt64(fetchErrorMetric)
-	m.NewInt64(sendErrorMetric)
-	m.NewInt64(processedMetric)
-	m.NewInt64(ignoredMetric)
+func New(m monitoring.Client, f Fetcher, s Sender, checkPublishAttribute bool) *Handler {
+	m.NewCounter(fetchErrorMetric, "Number of errors when fetching pubsub message from pubsub.")
+	m.NewCounter(sendErrorMetric, "Number of errors when sending HL7 message to mllp_addr.")
+	m.NewCounter(processedMetric, "Number of pubsub messages processed (including ignored).")
+	m.NewCounter(ignoredMetric, "Number of pubsub messages ignored.")
+	m.NewLatency(handleLatencyMetric, "The latency between \"pubsub message received\" to \"HL7 message sent to mllp_addr\".")
 
 	return &Handler{
 		metrics:               m,
@@ -64,12 +68,14 @@ func New(m *monitoring.Client, f Fetcher, s Sender, checkPublishAttribute bool) 
 
 // Handle fetches messages and sends them back to partners.
 func (h *Handler) Handle(m pubsub.Message) {
-	h.metrics.Inc(processedMetric)
+	start := time.Now()
+	defer h.metrics.AddLatency(handleLatencyMetric, float64(time.Since(start).Milliseconds()))
+	h.metrics.IncCounter(processedMetric)
 
 	if h.checkPublishAttribute {
 		// Ignore messages that are not meant to be published.
 		if m.Attrs()["publish"] != "true" {
-			h.metrics.Inc(ignoredMetric)
+			h.metrics.IncCounter(ignoredMetric)
 			return
 		}
 	}
@@ -78,12 +84,12 @@ func (h *Handler) Handle(m pubsub.Message) {
 	msg, err := h.f.Get(msgName)
 	if err != nil {
 		log.Warningf("Error fetching message %v: %v", msgName, err)
-		h.metrics.Inc(fetchErrorMetric)
+		h.metrics.IncCounter(fetchErrorMetric)
 		return
 	}
 	if _, err := h.s.Send(msg); err != nil {
 		log.Warningf("Error sending message %v: %v", msgName, err)
-		h.metrics.Inc(sendErrorMetric)
+		h.metrics.IncCounter(sendErrorMetric)
 		return
 	}
 

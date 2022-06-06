@@ -33,7 +33,6 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//mllp_adapter/mllp:go_default_library",
-        "//shared/monitoring:go_default_library",
         "//shared/testingutil:go_default_library",
     ],
 )

@@ -37,7 +37,7 @@ type MLLPReceiver struct {
 	listener net.Listener
 	sender   sender
 	port     int
-	metrics  *monitoring.Client
+	metrics  monitoring.Client
 
 	// If non-nil, connClosed will receive a message every time a connection
 	// is closed.  This is primarily useful for synchronizing tests.
@@ -45,15 +45,16 @@ type MLLPReceiver struct {
 }
 
 const (
-	reconnectsMetric     = "receiver-reconnects"
-	readsMetric          = "receiver-reads"
-	handleMessagesMetric = "receiver-handle-messages"
-	writesMetric         = "receiver-writes"
+	reconnectsMetric      = "receiver-reconnects"
+	readsMetric           = "receiver-reads"
+	handleMessagesMetric  = "receiver-handle-messages"
+	writesMetric          = "receiver-writes"
+	receiverLatencyMetric = "receiver-latency"
 )
 
 // NewReceiver creates a new MLLP receiver.  If port is 0, an available port is
 // chosen at random.
-func NewReceiver(ip string, port int, sender sender, mt *monitoring.Client) (*MLLPReceiver, error) {
+func NewReceiver(ip string, port int, sender sender, mt monitoring.Client) (*MLLPReceiver, error) {
 	localhost := net.JoinHostPort(ip, strconv.Itoa(port))
 	l, err := net.Listen("tcp", localhost)
 	if err != nil {
@@ -64,10 +65,12 @@ func NewReceiver(ip string, port int, sender sender, mt *monitoring.Client) (*ML
 	if !ok {
 		return nil, fmt.Errorf("casting %v to TCPAddr: %v", l.Addr(), err)
 	}
-	mt.NewInt64(reconnectsMetric)
-	mt.NewInt64(readsMetric)
-	mt.NewInt64(handleMessagesMetric)
-	mt.NewInt64(writesMetric)
+	mt.NewCounter(reconnectsMetric, "Number of times the receiver reconnects")
+	mt.NewCounter(readsMetric, "Number of HL7 messages read from receiver_ip")
+	mt.NewCounter(handleMessagesMetric, "Number of errors when handling HL7 message received from receiver_ip")
+	mt.NewCounter(writesMetric, "Number of HL7 messages written to HL7 store")
+	mt.NewLatency(receiverLatencyMetric, "The latency between \"HL7 message received\" to \"HL7 message written to HL7v2 store\"")
+
 	return &MLLPReceiver{listener: l, sender: sender, metrics: mt, port: tcpAddr.Port}, nil
 }
 
@@ -83,7 +86,7 @@ func (m *MLLPReceiver) Run() error {
 		if err != nil {
 			return fmt.Errorf("acceptTCP: %v", err)
 		}
-		m.metrics.Inc(reconnectsMetric)
+		m.metrics.IncCounter(reconnectsMetric)
 		go m.handleConnection(conn)
 	}
 }
@@ -115,18 +118,20 @@ func (m *MLLPReceiver) handleConnection(conn *net.TCPConn) {
 			}
 			return
 		}
-		m.metrics.Inc(readsMetric)
+		readTime := time.Now()
+		m.metrics.IncCounter(readsMetric)
 		ack, err := m.handleMessage(msg)
 		if err != nil {
 			log.Errorf("MLLP Receiver: failed to handle message: %v", err.Error())
 			return
 		}
-		m.metrics.Inc(handleMessagesMetric)
+		m.metrics.IncCounter(handleMessagesMetric)
 		if err := mllp.WriteMsg(conn, ack); err != nil {
 			log.Errorf("MLLP Receiver: failed to write ACK: %v", err)
 			return
 		}
-		m.metrics.Inc(writesMetric)
+		m.metrics.IncCounter(writesMetric)
+		m.metrics.AddLatency(receiverLatencyMetric, float64(time.Since(readTime).Milliseconds()))
 	}
 }
 

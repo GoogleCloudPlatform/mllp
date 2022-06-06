@@ -17,15 +17,49 @@ package testingutil
 
 import (
 	"testing"
-
-	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 )
 
 // CheckMetrics checks whether metrics match expected.
-func CheckMetrics(t *testing.T, metrics *monitoring.Client, expected map[string]int64) {
+func CheckMetrics(t *testing.T, metrics *FakeMonitoringClient, expected map[string]int64) {
 	for m, v := range expected {
-		if metrics.Value(m) != v {
-			t.Errorf("Metric %v expected %v, got %v", m, v, metrics.Value(m))
+		if metrics.CounterValue(m) != v {
+			t.Errorf("Metric %v expected %v, got %v", m, v, metrics.CounterValue(m))
 		}
 	}
+}
+
+// FakeMonitoringClient is a client used for local testing. Not thread-safe.
+type FakeMonitoringClient struct {
+	latencies map[string][]float64
+	counters  map[string]int64
+}
+
+// NewFakeMonitoringClient creates a new FakeMonitoringClient.
+func NewFakeMonitoringClient() *FakeMonitoringClient {
+	return &FakeMonitoringClient{latencies: make(map[string][]float64), counters: make(map[string]int64)}
+}
+
+// CounterValue returns the value of a counter metric.
+func (c *FakeMonitoringClient) CounterValue(name string) int64 {
+	return c.counters[name]
+}
+
+// IncCounter increment a counter metric.
+func (c *FakeMonitoringClient) IncCounter(name string) {
+	c.counters[name]++
+}
+
+// NewCounter creates a new counter metric.
+func (c *FakeMonitoringClient) NewCounter(name, desc string) {
+	c.counters[name] = 0
+}
+
+// AddLatency adds a latency value to a latency metric.
+func (c *FakeMonitoringClient) AddLatency(name string, value float64) {
+	c.latencies[name] = append(c.latencies[name], value)
+}
+
+// NewLatency creates a new latency metric.
+func (c *FakeMonitoringClient) NewLatency(name, desc string) {
+	c.latencies[name] = nil
 }
