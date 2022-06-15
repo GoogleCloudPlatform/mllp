@@ -16,6 +16,7 @@
 package testingutil
 
 import (
+	"sync"
 	"testing"
 )
 
@@ -32,6 +33,8 @@ func CheckMetrics(t *testing.T, metrics *FakeMonitoringClient, expected map[stri
 type FakeMonitoringClient struct {
 	latencies map[string][]float64
 	counters  map[string]int64
+
+	mu sync.RWMutex
 }
 
 // NewFakeMonitoringClient creates a new FakeMonitoringClient.
@@ -46,6 +49,8 @@ func (c *FakeMonitoringClient) CounterValue(name string) int64 {
 
 // IncCounter increment a counter metric.
 func (c *FakeMonitoringClient) IncCounter(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.counters[name]++
 }
 
@@ -56,6 +61,8 @@ func (c *FakeMonitoringClient) NewCounter(name, desc string) {
 
 // AddLatency adds a latency value to a latency metric.
 func (c *FakeMonitoringClient) AddLatency(name string, value float64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.latencies[name] = append(c.latencies[name], value)
 }
 

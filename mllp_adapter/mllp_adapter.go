@@ -64,15 +64,14 @@ func main() {
 func run() error {
 	ctx := context.Background()
 
-	var mon monitoring.Client
+	var mon *monitoring.ExportingClient
 	if *exportStats {
 		mon = monitoring.NewExportingClient()
-		if err := mon.(*monitoring.ExportingClient).StartExport(ctx, *credentials); err != nil {
+		if err := mon.StartExport(ctx, *credentials); err != nil {
 			return fmt.Errorf("failed to configure monitoring: %v", err)
 		}
 
-		defer mon.(*monitoring.ExportingClient).EndExport(ctx)
-
+		defer mon.EndExport(ctx)
 	}
 
 	if *apiAddrPrefix != "" {
