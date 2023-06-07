@@ -46,6 +46,7 @@ var (
 	hl7V2DatasetID        = flag.String("hl7_v2_dataset_id", "", "ID of the healthcare dataset")
 	hl7V2StoreID          = flag.String("hl7_v2_store_id", "", "ID of the HL7v2 store inside the healthcare dataset")
 	logNACKedMsg          = flag.Bool("log_nacked_msg", false, "[Optional] Whether to log the contents of messages that receive NACK from the API. These error logs will contain sensitive data.")
+	logErrorMsg           = flag.Bool("log_error_msg", false, "[Optional] Whether to log the error message when NACK is received from the API. These error logs will contain sensitive data.")
 	exportStats           = flag.Bool("export_stats", true, "[Optional] Whether to export stackdriver stats")
 	credentials           = flag.String("credentials", "", "[Optional] Path to the credentials file (in JSON format). The default service account will be used if not provided.")
 	checkPublishAttribute = flag.Bool("legacy_publish_attribute", false,
@@ -77,7 +78,9 @@ func run() error {
 	if *apiAddrPrefix != "" {
 		log.Warningf("Flag --api_addr_prefix deprecated, API calls will be made to healthcare.googleapis.com/v1.")
 	}
-	apiClient, err := healthapiclient.NewHL7V2Client(ctx, *credentials, mon, *hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID, *logNACKedMsg)
+	si := healthapiclient.StoreInfo{*hl7V2ProjectID, *hl7V2LocationID, *hl7V2DatasetID, *hl7V2StoreID}
+	opt := healthapiclient.Option{*logNACKedMsg, *logErrorMsg}
+	apiClient, err := healthapiclient.NewHL7V2Client(ctx, *credentials, mon, si, opt)
 	if err != nil {
 		return fmt.Errorf("failed to connect to HL7v2 API: %v", err)
 	}

@@ -53,19 +53,35 @@ type HL7V2Client struct {
 	datasetID    string
 	hl7V2StoreID string
 	logNACKedMsg bool
+	logErrMsg    bool
 }
 
 type sendMessageErrorResp struct {
 	Error struct {
+		Message string `json:"message"`
 		Details []struct {
 			Hl7Nack []byte `json:"hl7Nack"`
 		} `json:"details"`
 	} `json:"error"`
 }
 
+// StoreInfo contains information about an HL7v2 store.
+type StoreInfo struct {
+	ProjectID    string
+	LocationID   string
+	DatasetID    string
+	HL7V2StoreID string
+}
+
+// Option contains flags for the HL7v2Client.
+type Option struct {
+	LogNACKedMessage bool
+	LogErrorMessage  bool
+}
+
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
-func NewHL7V2Client(ctx context.Context, cred string, metrics monitoring.Client, projectID, locationID, datasetID, hl7V2StoreID string, logNACKedMsg bool) (*HL7V2Client, error) {
-	if err := validatesComponents(projectID, locationID, datasetID, hl7V2StoreID); err != nil {
+func NewHL7V2Client(ctx context.Context, cred string, metrics monitoring.Client, si StoreInfo, opt Option) (*HL7V2Client, error) {
+	if err := validatesComponents(si.ProjectID, si.LocationID, si.DatasetID, si.HL7V2StoreID); err != nil {
 		return nil, err
 	}
 
@@ -77,11 +93,12 @@ func NewHL7V2Client(ctx context.Context, cred string, metrics monitoring.Client,
 	c := &HL7V2Client{
 		metrics:      metrics,
 		storeService: storeService,
-		projectID:    projectID,
-		locationID:   locationID,
-		datasetID:    datasetID,
-		hl7V2StoreID: hl7V2StoreID,
-		logNACKedMsg: logNACKedMsg,
+		projectID:    si.ProjectID,
+		locationID:   si.LocationID,
+		datasetID:    si.DatasetID,
+		hl7V2StoreID: si.HL7V2StoreID,
+		logNACKedMsg: opt.LogNACKedMessage,
+		logErrMsg:    opt.LogErrorMessage,
 	}
 	c.initMetrics()
 	return c, nil
@@ -148,7 +165,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 			if len(e.Body) == 0 {
 				return nil, e
 			}
-			nack, err := extractNACKFromErrorResponse([]byte(e.Body))
+			nack, em, err := extractNACKAndErrorMessage([]byte(e.Body))
 			if err != nil {
 				return nil, err
 			}
@@ -156,6 +173,9 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 				log.Errorf("Message was sent to the Cloud Healthcare API HL7V2 Store, received a NACK response.")
 				if c.logNACKedMsg {
 					log.Errorf("The original message was %s", sanitizeMessageForPrintout(data))
+				}
+				if c.logErrMsg {
+					log.Errorf("The error message was %q", em)
 				}
 				return nack, nil
 			}
@@ -181,17 +201,18 @@ func sanitizeMessageForPrintout(data []byte) string {
 	return fmt.Sprintf("[base64 encoded] %s", base64.StdEncoding.EncodeToString(data))
 }
 
-func extractNACKFromErrorResponse(resp []byte) ([]byte, error) {
+func extractNACKAndErrorMessage(resp []byte) ([]byte, string, error) {
 	var parsedErrorResp *sendMessageErrorResp
 	if err := json.Unmarshal(resp, &parsedErrorResp); err != nil {
-		return nil, fmt.Errorf("unable to parse error response data: %v\n%s", err, resp)
+		return nil, "", fmt.Errorf("unable to parse error response data: %v\n%s", err, resp)
 	}
+	em := parsedErrorResp.Error.Message
 	for _, d := range parsedErrorResp.Error.Details {
 		if len(d.Hl7Nack) > 0 {
-			return d.Hl7Nack, nil
+			return d.Hl7Nack, em, nil
 		}
 	}
-	return nil, nil
+	return nil, em, nil
 }
 
 // Get retrieves a message from the server.
