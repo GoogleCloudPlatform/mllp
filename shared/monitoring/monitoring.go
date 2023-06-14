@@ -23,7 +23,7 @@ import (
 	"time"
 
 	log "github.com/golang/glog"
-	"cloud.google.com/go/compute/metadata"
+	"google3/third_party/golang/cloud_google_com/go/compute/v/v0/metadata/metadata"
 	"google.golang.org/api/option"
 	"github.com/google/uuid"
 	"github.com/GoogleCloudPlatform/mllp/shared/util"
