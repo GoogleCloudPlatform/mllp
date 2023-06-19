@@ -338,24 +338,39 @@ func TestGetError(t *testing.T) {
 
 func TestSanitizeMessageForPrintout(t *testing.T) {
 	testCases := []struct {
-		name string
-		data []byte
-		want string
+		name   string
+		data   []byte
+		encode bool
+		want   string
 	}{
 		{
-			name: "utf8",
-			data: []byte("abc"),
-			want: "abc",
+			name:   "utf8",
+			data:   []byte("abc"),
+			encode: false,
+			want:   "abc",
 		},
 		{
-			name: "base64",
-			data: []byte{0xbd, 0xb2, 0x3d},
-			want: "[base64 encoded] vbI9",
+			name:   "encode utf8",
+			data:   []byte("abc"),
+			encode: true,
+			want:   "[base64 encoded] YWJj",
+		},
+		{
+			name:   "always base64 encode non-utf8",
+			data:   []byte{0xbd, 0xb2, 0x3d},
+			encode: false,
+			want:   "[base64 encoded] vbI9",
+		},
+		{
+			name:   "base64",
+			data:   []byte{0xbd, 0xb2, 0x3d},
+			encode: true,
+			want:   "[base64 encoded] vbI9",
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := sanitizeMessageForPrintout(tc.data)
+			got := sanitizeMessageForPrintout(tc.data, tc.encode)
 			if got != tc.want {
 				t.Errorf("sanitizeMessageForPrintout returned %s; want %s", got, tc.want)
 			}
