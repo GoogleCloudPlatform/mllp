@@ -16,10 +16,10 @@
 package mllpsender
 
 import (
+	"sync"
 	"fmt"
 	"net"
 
-	log "github.com/golang/glog"
 	"github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp"
 	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
 )
@@ -29,12 +29,16 @@ const (
 	ackErrorMetric  = "mllpsender-messages-ack-error"
 	sendErrorMetric = "mllpsender-messages-send-error"
 	dialErrorMetric = "mllpsender-connections-dial-error"
+	poolErrorMetric = "mllpsender-connections-pool-error"
 )
+
+var conn net.Conn
 
 // MLLPSender represents an MLLP sender.
 type MLLPSender struct {
 	addr    string
 	metrics monitoring.Client
+	pool *sync.Pool
 }
 
 // NewSender creates a new MLLPSender.
@@ -43,24 +47,30 @@ func NewSender(addr string, metrics monitoring.Client) *MLLPSender {
 	metrics.NewCounter(ackErrorMetric, "Number of errors when receiving ACK from mllp_addr")
 	metrics.NewCounter(sendErrorMetric, "Number of errors when sending HL7 message to mllp_addr")
 	metrics.NewCounter(dialErrorMetric, "Number of errors when dialing to mllp_addr")
-	return &MLLPSender{addr: addr, metrics: metrics}
+	metrics.NewCounter(poolErrorMetric, "Number of errors when getting connection from pool")
+
+	pool := &sync.Pool{
+		New: func() interface{} {
+			conn, err := net.Dial("tcp", addr)
+			if err != nil {
+				panic(fmt.Errorf("dialing: %w", err))
+			}
+			return conn
+		},
+	}
+
+	return &MLLPSender{addr: addr, metrics: metrics, pool: pool}
 }
 
 // Send sends an HL7 messages via MLLP.
 func (m *MLLPSender) Send(msg []byte) ([]byte, error) {
 	m.metrics.IncCounter(sentMetric)
-
-	conn, err := net.Dial("tcp", m.addr)
-	if err != nil {
-		m.metrics.IncCounter(dialErrorMetric)
-		return nil, fmt.Errorf("dialing: %v", err)
-	}
-	defer func() {
-		if err := conn.Close(); err != nil {
-			log.Errorf("MLLP Sender: failed to clean up connection: %v", err)
-		}
-	}()
-
+	
+	conn, ok := m.pool.Get().(net.Conn)
+	if !ok {
+		m.metrics.IncCounter(poolErrorMetric)
+		return nil, fmt.Errorf("unexpected object type returned by pool: %T", conn)
+	  }
 	if err := mllp.WriteMsg(conn, msg); err != nil {
 		m.metrics.IncCounter(sendErrorMetric)
 		return nil, fmt.Errorf("writing message: %v", err)
@@ -70,5 +80,6 @@ func (m *MLLPSender) Send(msg []byte) ([]byte, error) {
 		m.metrics.IncCounter(ackErrorMetric)
 		return nil, fmt.Errorf("reading ACK: %v", err)
 	}
+	m.pool.Put(conn)
 	return ack, nil
 }
