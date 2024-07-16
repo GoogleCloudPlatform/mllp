@@ -85,11 +85,12 @@ steps:
   waitFor: ['Create pubsub topic/subscription', 'Create cluster']
 
 - id: 'Get endpoint'
-  name: 'gcr.io/cloud-builders/kubectl'
+  name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'bash'
   args:
   - '-c'
   - |
+    gcloud container clusters get-credentials $(cat _cluster-name) --location us-central1-b --project $PROJECT_ID
     # grab the public IP of the load balancer
     get_ip() {
       kubectl get service mllp-adapter-presubmit-service -o=jsonpath='{.status.loadBalancer.ingress[0].ip}'

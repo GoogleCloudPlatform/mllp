@@ -110,8 +110,9 @@ func (m *MLLPReceiver) handleConnection(conn *net.TCPConn) {
 		}
 	}()
 
+	reader := mllp.NewMessageReader(conn)
 	for {
-		msg, err := mllp.ReadMsg(conn)
+		msg, err := reader.Next()
 		if err != nil {
 			if err != io.EOF {
 				log.Errorf("MLLP Receiver: failed to read message: %v", err)

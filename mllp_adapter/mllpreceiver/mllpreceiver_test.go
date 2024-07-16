@@ -15,6 +15,7 @@
 package mllpreceiver
 
 import (
+	"bytes"
 	"net"
 	"reflect"
 	"strconv"
@@ -98,6 +99,14 @@ func TestValidMessages(t *testing.T) {
 			[][]byte{cannedMsg, cannedMsg, cannedMsg},
 		},
 		testCase{
+			"3 encapsulated messages, single connection",
+			[]connection{{
+				bytes.Join([][]byte{wrappedMsg, wrappedMsg, wrappedMsg}, nil),
+				[][]byte{cannedAck, cannedAck, cannedAck},
+			}},
+			[][]byte{cannedMsg, cannedMsg, cannedMsg},
+		},
+		testCase{
 			"2 encapsulated messages, 1 unencapsulated message (ignored and not sent), sent over separate connections",
 			[]connection{
 				connection{
@@ -116,14 +125,14 @@ func TestValidMessages(t *testing.T) {
 			[][]byte{cannedMsg, cannedMsg},
 		},
 		testCase{
-			"encapsulated message, unencapsulated message, encapsulated message, sent over a single connection, unencapsulated message and everything after is ignored",
+			"encapsulated message, unencapsulated message, encapsulated message, sent over a single connection",
 			[]connection{
 				connection{
-					append(append(wrappedMsg, cannedMsg...), wrappedMsg...),
+					bytes.Join([][]byte{wrappedMsg, cannedMsg, wrappedMsg}, nil),
 					[][]byte{cannedAck},
 				},
 			},
-			[][]byte{cannedMsg},
+			[][]byte{cannedMsg, cannedMsg},
 		},
 		testCase{
 			"garbage (ignored)",
@@ -142,11 +151,17 @@ func TestValidMessages(t *testing.T) {
 			s, r := setUp(t)
 			for _, c := range tc.connections {
 				conn := dial(t, r.port)
-				conn.Write(c.input)
-				for _, expectedAck := range c.expectedAcks {
-					ack := receiveAck(t, conn)
-					if !reflect.DeepEqual(ack, expectedAck) {
-						t.Errorf("Expected ack %v but got %v", expectedAck, ack)
+				if _, err := conn.Write(c.input); err != nil {
+					t.Fatalf("Failed to write message: %v", err)
+				}
+				reader := mllp.NewMessageReader(conn)
+				for _, wantResp := range c.expectedAcks {
+					gotResp, err := reader.Next()
+					if err != nil {
+						t.Fatalf("Next() failed: %v", err)
+					}
+					if !bytes.Equal(gotResp, wantResp) {
+						t.Errorf("Next() got message %v, want %v", gotResp, wantResp)
 					}
 				}
 				conn.Close()
@@ -186,7 +201,12 @@ func Test3SimultanousConnections(t *testing.T) {
 func TestMessageStats(t *testing.T) {
 	s, r := setUp(t)
 	c := dial(t, r.port)
-	mllp.WriteMsg(c, cannedMsg)
+	if err := mllp.WriteMsg(c, cannedMsg); err != nil {
+		t.Errorf("Failed to write message: %v", err)
+	}
+	if _, err := mllp.ReadMsg(c); err != nil {
+		t.Fatalf("Failed to read ack: %v", err)
+	}
 	if err := c.Close(); err != nil {
 		t.Fatalf("Failure closing connection: %v", err)
 	}

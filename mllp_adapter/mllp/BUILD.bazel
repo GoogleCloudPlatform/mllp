@@ -20,6 +20,9 @@ go_library(
     name = "go_default_library",
     srcs = ["mllp.go"],
     importpath = "github.com/GoogleCloudPlatform/mllp/mllp_adapter/mllp",
+    deps = [
+        "@com_github_golang_glog//:go_default_library",
+    ],
 )
 
 go_test(

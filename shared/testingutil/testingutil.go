@@ -22,6 +22,7 @@ import (
 
 // CheckMetrics checks whether metrics match expected.
 func CheckMetrics(t *testing.T, metrics *FakeMonitoringClient, expected map[string]int64) {
+	t.Helper()
 	for m, v := range expected {
 		if metrics.CounterValue(m) != v {
 			t.Errorf("Metric %v expected %v, got %v", m, v, metrics.CounterValue(m))

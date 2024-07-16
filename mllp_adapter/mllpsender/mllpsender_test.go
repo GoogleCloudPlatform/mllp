@@ -82,6 +82,7 @@ func TestSendError(t *testing.T) {
 	listener, sender, metrics := setUp()
 	go func() {
 		conn := accept(t, listener)
+		mllp.ReadMsg(conn)
 		conn.Close()
 	}()
 	if _, err := sender.Send(cannedMsg); err == nil {
@@ -94,6 +95,7 @@ func TestRecoverAfterSendError(t *testing.T) {
 	listener, sender, metrics := setUp()
 	go func() {
 		conn := accept(t, listener)
+		mllp.ReadMsg(conn)
 		conn.Close()
 		conn = accept(t, listener)
 		mllp.ReadMsg(conn)

@@ -52,7 +52,7 @@ func TestOK(t *testing.T) {
 				t.Errorf("Writing message %v: expected %v but got %v", tc.raw, tc.mllp, enc.Bytes())
 			}
 
-			dec, err := ReadMsg(bytes.NewBuffer(tc.mllp))
+			dec, err := ReadMsg(bytes.NewReader(tc.mllp))
 			if err != nil {
 				t.Errorf("Unexpected error reading message %v: %v", tc.mllp, err)
 			}
@@ -60,6 +60,32 @@ func TestOK(t *testing.T) {
 				t.Errorf("Reading message %v: expected %v but got %v", tc.mllp, tc.raw, dec)
 			}
 		})
+	}
+}
+
+func TestRead_MultipleMessages(t *testing.T) {
+	msg1 := []byte("msg1")
+	msg2 := []byte("msg2")
+	data := bytes.Join([][]byte{
+		[]byte{startBlock}, msg1, []byte{endBlock, cr},
+		[]byte{startBlock}, msg2, []byte{endBlock, cr},
+	}, nil)
+	reader := NewMessageReader(bytes.NewReader(data))
+
+	innerMsg, err := reader.Next()
+	if err != nil {
+		t.Errorf("Unexpected error reading first message in %s: %v", data, err)
+	}
+	if !bytes.Equal(innerMsg, msg1) {
+		t.Errorf("Reading first message: got %s, want %s", innerMsg, msg1)
+	}
+
+	innerMsg, err = reader.Next()
+	if err != nil {
+		t.Errorf("Unexpected error reading second message in %s: %v", data, err)
+	}
+	if !bytes.Equal(innerMsg, msg2) {
+		t.Errorf("Reading second message: got %s, want %s", innerMsg, msg2)
 	}
 }
 
@@ -77,7 +103,7 @@ func TestError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := ReadMsg(bytes.NewBuffer(tc.msg)); err == nil {
+			if _, err := ReadMsg(bytes.NewReader(tc.msg)); err == nil {
 				t.Errorf("Expected error for message %v", tc.msg)
 			}
 		})
