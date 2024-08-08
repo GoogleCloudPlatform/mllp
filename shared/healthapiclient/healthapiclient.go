@@ -54,6 +54,7 @@ type HL7V2Client struct {
 	hl7V2StoreID string
 	logNACKedMsg bool
 	logErrMsg    bool
+	logACK       bool
 }
 
 type sendMessageErrorResp struct {
@@ -77,6 +78,7 @@ type StoreInfo struct {
 type Option struct {
 	LogNACKedMessage bool
 	LogErrorMessage  bool
+	LogACK           bool
 }
 
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
@@ -99,6 +101,7 @@ func NewHL7V2Client(ctx context.Context, cred string, metrics monitoring.Client,
 		hl7V2StoreID: si.HL7V2StoreID,
 		logNACKedMsg: opt.LogNACKedMessage,
 		logErrMsg:    opt.LogErrorMessage,
+		logACK:       opt.LogACK,
 	}
 	c.initMetrics()
 	return c, nil
@@ -187,6 +190,9 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 	if err != nil {
 		c.metrics.IncCounter(sendErrorMetric)
 		return nil, fmt.Errorf("unable to parse ACK response: %v", err)
+	}
+	if c.logACK {
+		log.Infof("Received ACK from HL7V2 Store: %s", sanitizeMessageForPrintout(ack))
 	}
 	log.Infof("Message was successfully sent to the Cloud Healthcare API HL7V2 Store.")
 	return ack, nil
