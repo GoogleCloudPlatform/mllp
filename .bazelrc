@@ -1,0 +1,2 @@
+common --noenable_bzlmod
+common --@io_bazel_rules_docker//transitions:enable=false
