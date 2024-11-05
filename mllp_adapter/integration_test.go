@@ -45,6 +45,7 @@ var (
 )
 
 func TestSendToMLLPAdapter(t *testing.T) {
+	log.Info("lnogueir@ Whats going on here")
 	ctx := context.Background()
 	message := "MSH|^~\\&|FROM_APP|FROM_FACILITY_A|TO_APP|TO_FACILITY|20150503223000||ADT^A01|20150503223000|T|2.3|||AL||44|ASCII\rPID||843125^^^^MRN|21004053^^^^MRN~2269030303^^^^NHSNMBR"
 	ack, err := sendHL7V2MessageToMLLPAdapter(t, message)
