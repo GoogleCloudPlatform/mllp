@@ -156,3 +156,5 @@ steps:
       fi
 images: ['gcr.io/$PROJECT_ID/mllp_adapter:presubmit']
 timeout: 3600s
+options:
+  machineType: 'E2_HIGHCPU_32'
