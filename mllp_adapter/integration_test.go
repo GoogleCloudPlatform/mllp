@@ -130,6 +130,7 @@ func getMessageInHL7V2Store(ctx context.Context, storeID, filter string, wantCou
 
 func sendHL7V2MessageToMLLPAdapter(t *testing.T, hl7V2Message string) ([]byte, error) {
 	conn, err := net.Dial("tcp", *mllpAdapterAddr)
+	log.Infof("connected to the MLLP adapter at %s", *mllpAdapterAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the MLLP adapter at %s: %v", *mllpAdapterAddr, err)
 	}
