@@ -81,7 +81,7 @@ steps:
   args:
   - '-c'
   - |
-    /gke-deploy run --filename=config/presubmit --cluster=$(cat _cluster-name) --location=us-central1-b
+    /gke-deploy run --filename=config/presubmit --cluster=$(cat _cluster-name) --location=us-central1-b --verbose
   waitFor: ['Create pubsub topic/subscription', 'Create cluster']
 
 - id: 'Get endpoint'
