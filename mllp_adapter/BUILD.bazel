@@ -37,6 +37,8 @@ container_run_and_commit(
     commands = [
         "apt update",
         "DEBIAN_FRONTEND=noninteractive apt upgrade -y",
+        "DEBIAN_FRONTEND=noninteractive apt install unminimize -y",
+        "yes | unminimize",
     ],
     image = "@ubuntu//image:image",
 )
