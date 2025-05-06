@@ -37,6 +37,7 @@ container_run_and_commit(
     commands = [
         "apt update",
         "DEBIAN_FRONTEND=noninteractive apt upgrade -y",
+        "DEBIAN_FRONTEND=noninteractive apt install -y ca-certificates",
     ],
     image = "@ubuntu//image:image",
 )

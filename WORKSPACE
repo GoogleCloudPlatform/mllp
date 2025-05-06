@@ -317,7 +317,6 @@ load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
 
 container_pull(
     name = "ubuntu",
-    digest = "sha256:a6aba56fdd9284d1b1397c7703203417bca3b518e78612783d199203c3cdf2fa",
     registry = "gcr.io",
-    repository = "cloud-marketplace-containers/google/ubuntu1804",
+    repository = "cloud-marketplace-containers/google/ubuntu2404",
 )
