@@ -46,15 +46,16 @@ const (
 
 // HL7V2Client represents a client of the HL7v2 API.
 type HL7V2Client struct {
-	metrics      monitoring.Client
-	storeService *healthcare.ProjectsLocationsDatasetsHl7V2StoresService
-	projectID    string
-	locationID   string
-	datasetID    string
-	hl7V2StoreID string
-	logNACKedMsg bool
-	logErrMsg    bool
-	logACK       bool
+	metrics                 monitoring.Client
+	storeService            *healthcare.ProjectsLocationsDatasetsHl7V2StoresService
+	projectID               string
+	locationID              string
+	datasetID               string
+	hl7V2StoreID            string
+	logNACKedMsg            bool
+	logErrMsg               bool
+	logACK                  bool
+	logInputMessageInBase64 bool
 }
 
 type sendMessageErrorResp struct {
@@ -76,9 +77,10 @@ type StoreInfo struct {
 
 // Option contains flags for the HL7v2Client.
 type Option struct {
-	LogNACKedMessage bool
-	LogErrorMessage  bool
-	LogACK           bool
+	LogNACKedMessage        bool
+	LogErrorMessage         bool
+	LogACK                  bool
+	LogInputMessageInBase64 bool
 }
 
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
@@ -93,15 +95,16 @@ func NewHL7V2Client(ctx context.Context, cred string, metrics monitoring.Client,
 	}
 
 	c := &HL7V2Client{
-		metrics:      metrics,
-		storeService: storeService,
-		projectID:    si.ProjectID,
-		locationID:   si.LocationID,
-		datasetID:    si.DatasetID,
-		hl7V2StoreID: si.HL7V2StoreID,
-		logNACKedMsg: opt.LogNACKedMessage,
-		logErrMsg:    opt.LogErrorMessage,
-		logACK:       opt.LogACK,
+		metrics:                 metrics,
+		storeService:            storeService,
+		projectID:               si.ProjectID,
+		locationID:              si.LocationID,
+		datasetID:               si.DatasetID,
+		hl7V2StoreID:            si.HL7V2StoreID,
+		logNACKedMsg:            opt.LogNACKedMessage,
+		logErrMsg:               opt.LogErrorMessage,
+		logACK:                  opt.LogACK,
+		logInputMessageInBase64: opt.LogInputMessageInBase64,
 	}
 	c.initMetrics()
 	return c, nil
@@ -175,7 +178,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 			if nack != nil {
 				log.Errorf("Message was sent to the Cloud Healthcare API HL7V2 Store, received a NACK response.")
 				if c.logNACKedMsg {
-					log.Errorf("The original message was %s", sanitizeMessageForPrintout(data))
+					log.Errorf("The original message was %s", sanitizeMessageForPrintout(data, c.logInputMessageInBase64))
 				}
 				if c.logErrMsg {
 					log.Errorf("The error message was %q", em)
@@ -192,13 +195,16 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("unable to parse ACK response: %v", err)
 	}
 	if c.logACK {
-		log.Infof("Received ACK from HL7V2 Store: %s", sanitizeMessageForPrintout(ack))
+		log.Infof("Received ACK from HL7V2 Store: %s", sanitizeMessageForPrintout(ack, c.logInputMessageInBase64))
 	}
 	log.Infof("Message was successfully sent to the Cloud Healthcare API HL7V2 Store.")
 	return ack, nil
 }
 
-func sanitizeMessageForPrintout(data []byte) string {
+func sanitizeMessageForPrintout(data []byte, alwaysInBase64 bool) string {
+	if alwaysInBase64 {
+		return fmt.Sprintf("[base64 encoded] %s", base64.StdEncoding.EncodeToString(data))
+	}
 	if utf8.Valid(data) {
 		// Convert to UTF8 if possible.
 		return string(data)
