@@ -369,3 +369,50 @@ func TestSanitizeMessageForPrintout(t *testing.T) {
 		})
 	}
 }
+
+func TestEncodeBase64DataForRequest(t *testing.T) {
+	testCases := []struct {
+		name             string
+		data             []byte
+		fallbackEncoding string
+		want             string
+	}{
+		{
+			name: "utf8",
+			data: []byte("Dr. House"),
+			want: "RHIuIEhvdXNl", // base64 encoding of "Dr. House"
+		},
+		{
+			name:             "utf8_replace_invalid_utf8",
+			data:             []byte{0x44, 0x72, 0x2E, 0xA0, 0x48, 0x6F, 0x75, 0x73, 0x65},
+			fallbackEncoding: "utf-8",
+			want:             "RHIu77+9SG91c2U=", // base64 encoding of "Dr. House" in UTF-8
+		},
+		{
+			name:             "windows_1252_non_breaking_space",
+			data:             []byte{0x44, 0x72, 0x2E, 0xA0, 0x48, 0x6F, 0x75, 0x73, 0x65},
+			fallbackEncoding: "windows-1252",
+			want:             "RHIuwqBIb3VzZQ==", // base64 encoding of "Dr." + unknown + " House" in UTF-8
+		},
+		{
+			name:             "latin-1 non-breaking space",
+			data:             []byte{0x44, 0x72, 0x2E, 0xA0, 0x48, 0x6F, 0x75, 0x73, 0x65},
+			fallbackEncoding: "latin-1",
+			want:             "RHIuoEhvdXNl", // base64 encoding of "Dr.House" in UTF-8
+		},
+		{
+			name:             "invalid fallback encoding",
+			data:             []byte{0x44, 0x72, 0x2E, 0xA0, 0x48, 0x6F, 0x75, 0x73, 0x65},
+			fallbackEncoding: "invalid-encoding",
+			want:             "RHIuoEhvdXNl", // Base64 encoding of the original bytes
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := encodeBase64DataForRequest(tc.data, tc.fallbackEncoding)
+			if got != tc.want {
+				t.Errorf("encodeBase64DataForRequest(%v, %q) returned %s; want %s", tc.data, tc.fallbackEncoding, got, tc.want)
+			}
+		})
+	}
+}

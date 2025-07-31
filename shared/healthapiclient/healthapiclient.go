@@ -23,6 +23,8 @@ import (
 	"unicode/utf8"
 
 	log "github.com/golang/glog"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/htmlindex"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"github.com/GoogleCloudPlatform/mllp/shared/monitoring"
@@ -56,6 +58,7 @@ type HL7V2Client struct {
 	logErrMsg               bool
 	logACK                  bool
 	logInputMessageInBase64 bool
+	fallbackEncoding        string
 }
 
 type sendMessageErrorResp struct {
@@ -81,6 +84,7 @@ type Option struct {
 	LogErrorMessage         bool
 	LogACK                  bool
 	LogInputMessageInBase64 bool
+	FallbackEncoding        string
 }
 
 // NewHL7V2Client creates a properly authenticated client that talks to an HL7v2 backend.
@@ -105,6 +109,7 @@ func NewHL7V2Client(ctx context.Context, cred string, metrics monitoring.Client,
 		logErrMsg:               opt.LogErrorMessage,
 		logACK:                  opt.LogACK,
 		logInputMessageInBase64: opt.LogInputMessageInBase64,
+		fallbackEncoding:        opt.FallbackEncoding,
 	}
 	c.initMetrics()
 	return c, nil
@@ -156,7 +161,7 @@ func (c *HL7V2Client) Send(data []byte) ([]byte, error) {
 
 	req := &healthcare.IngestMessageRequest{
 		Message: &healthcare.Message{
-			Data: base64.StdEncoding.EncodeToString(data),
+			Data: encodeBase64DataForRequest(data, c.fallbackEncoding),
 		},
 	}
 	ctx := context.Background()
@@ -266,4 +271,38 @@ func (c *HL7V2Client) Get(msgName string) ([]byte, error) {
 	}
 	log.Infof("Message was successfully fetched from the Cloud Healthcare API HL7V2 Store.")
 	return msg, nil
+}
+
+// encodeBase64DataForRequest encodes the data to base64. If the data is not valid UTF-8, it will
+// try to decode from the fallback encoding to UTF-8. If the fallback encoding is not supported or
+// the data cannot be decoded from the fallback encoding, it will encode the data to base64 and
+// forward to the API.
+func encodeBase64DataForRequest(data []byte, fallbackEncoding string) string {
+	// 1. Check if the data is already valid UTF-8.
+	if utf8.Valid(data) { // just encode to base64
+		return base64.StdEncoding.EncodeToString(data)
+	}
+	if fallbackEncoding == "" || fallbackEncoding == "utf-8" {
+		// swap invalid UTF-8 to unknown characters
+		log.Warning("Replacing invalid UTF-8 characters with unknown characters and forwarding data to the API.")
+		replaceEncoding := encoding.Replacement.NewEncoder()
+		processedData, err := replaceEncoding.Bytes(data)
+		if err != nil {
+			log.Warningf("Failed to replace invalid UTF-8 characters with unknown characters: %v", err)
+			processedData = data
+		}
+		return base64.StdEncoding.EncodeToString(processedData)
+	}
+	encodingType, err := htmlindex.Get(fallbackEncoding)
+	if err != nil {
+		log.Warningf("Failed to get encoder for fallback encoding %q: %v. Forwarding data to the API as is.", fallbackEncoding, err)
+		return base64.StdEncoding.EncodeToString(data)
+	}
+	decoder := encodingType.NewDecoder()
+	processedData, err := decoder.Bytes(data)
+	if err != nil {
+		log.Warningf("Failed to decode with %v fallback encoding: %v. Forwarding data to the API as is.", fallbackEncoding, err)
+		processedData = data
+	}
+	return base64.StdEncoding.EncodeToString(processedData)
 }

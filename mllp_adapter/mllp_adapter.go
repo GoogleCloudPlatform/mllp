@@ -48,6 +48,7 @@ var (
 	logACK                  = flag.Bool("log_ack", false, "[Optional] Whether to log the ACK received from the API. These info logs will contain sensitive data.")
 	logNACKedMsg            = flag.Bool("log_nacked_msg", false, "[Optional] Whether to log the contents of messages that receive NACK from the API. These error logs will contain sensitive data.")
 	logInputMessageInBase64 = flag.Bool("log_input_msg_in_base64", false, "[Optional] Whether to log the contents of messages in base64 format. This can be useful for logging messages that are not in UTF-8. These error logs will contain sensitive data.")
+	fallbackEncoding        = flag.String("fallback_encoding", "", "[Optional] Whether to use a given encoding as a fallback when data cannot be parsed as UTF-8. By default, UTF-8 is used with no fallback.")
 	logErrorMsg             = flag.Bool("log_error_msg", false, "[Optional] Whether to log the error message when NACK is received from the API. These error logs will contain sensitive data.")
 	exportStats             = flag.Bool("export_stats", true, "[Optional] Whether to export stackdriver stats")
 	credentials             = flag.String("credentials", "", "[Optional] Path to the credentials file (in JSON format). The default service account will be used if not provided.")
@@ -86,6 +87,7 @@ func run() error {
 		LogErrorMessage:         *logErrorMsg,
 		LogACK:                  *logACK,
 		LogInputMessageInBase64: *logInputMessageInBase64,
+		FallbackEncoding:        *fallbackEncoding,
 	}
 	apiClient, err := healthapiclient.NewHL7V2Client(ctx, *credentials, mon, si, opt)
 	if err != nil {
