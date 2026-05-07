@@ -143,11 +143,18 @@ func (m *ExportingClient) StartExport(ctx context.Context, cred string) error {
 	}
 	m.labels.Set("zone", zone, "")
 
-	instance, err := metadata.InstanceID()
+	instanceID, err := metadata.InstanceID()
 	if err != nil {
 		return err
 	}
-	m.labels.Set("instance", instance, "")
+	m.labels.Set("instance", instanceID, "")
+	
+	instanceName, err := metadata.InstanceName()
+	if err != nil {
+		return err
+	}
+	m.labels.Set("instance_name", instanceName, "")
+	
 	m.labels.Set("job", "mllp_adapter", "")
 	// Use uuid to prevent multiple mllp adapter instances from submitting
 	// metrics with the same label.
