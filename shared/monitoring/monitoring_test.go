@@ -33,6 +33,7 @@ func TestClient(t *testing.T) {
 	}
 	cl.labels.Set("job", "mllp_adapter", "")
 	cl.labels.Set("instance", "instance1", "")
+	cl.labels.Set("instance_name", "instance_name1", "")
 	cl.labels.Set("zone", "zone1", "")
 
 	metricreader := metricexport.NewReader()
