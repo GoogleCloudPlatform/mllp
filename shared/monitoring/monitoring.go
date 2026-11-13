@@ -28,7 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/GoogleCloudPlatform/mllp/shared/util"
 
-	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"contrib.go.opencensus.io/exporter/stackdriver"
